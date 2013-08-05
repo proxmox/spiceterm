@@ -43,8 +43,8 @@ int main(void)
     test_add_agent_interface(test->server);
     test_set_simple_command_list(test, simple_commands, COUNT(simple_commands));
 
-    ping_timer = core->timer_add(pinger, NULL);
-    core->timer_start(ping_timer, ping_ms);
+    //ping_timer = core->timer_add(pinger, NULL);
+    //core->timer_start(ping_timer, ping_ms);
 
     basic_event_loop_mainloop();
 
