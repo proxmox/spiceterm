@@ -14,7 +14,6 @@
 #include <spice/qxl_dev.h>
 
 #include "test_display_base.h"
-//#include "red_channel.h"
 
 #define MEM_SLOT_GROUP_ID 0
 
@@ -29,11 +28,6 @@ typedef struct SimpleSpiceUpdate {
     QXLImage image;
     uint8_t *bitmap;
 } SimpleSpiceUpdate;
-
-typedef struct SimpleSurfaceCmd {
-    QXLCommandExt ext; // first
-    QXLSurfaceCmd surface_cmd;
-} SimpleSurfaceCmd;
 
 static void test_spice_destroy_update(SimpleSpiceUpdate *update)
 {
@@ -78,32 +72,6 @@ static void simple_set_release_info(QXLReleaseInfo *info, intptr_t ptr)
 {
     info->id = ptr;
     //info->group_id = MEM_SLOT_GROUP_ID;
-}
-
-typedef struct Path {
-    int t;
-    int min_t;
-    int max_t;
-} Path;
-
-static void path_init(Path *path, int min, int max)
-{
-    path->t = min;
-    path->min_t = min;
-    path->max_t = max;
-}
-
-static void path_progress(Path *path)
-{
-    path->t = (path->t+1)% (path->max_t - path->min_t) + path->min_t;
-}
-
-Path path;
-
-static void draw_pos(Test *test, int t, int *x, int *y)
-{
-    *y = test->primary_height*(t % SINGLE_PART)/SINGLE_PART;
-    *x = ((test->primary_width/SINGLE_PART)*(t / SINGLE_PART)) % test->primary_width;
 }
 
 /* bitmap and rects are freed, so they must be allocated with malloc */
@@ -172,28 +140,7 @@ SimpleSpiceUpdate *test_spice_create_update_from_bitmap(uint32_t surface_id,
     return update;
 }
 
-static SimpleSpiceUpdate *test_spice_create_update_solid(uint32_t surface_id, QXLRect bbox, uint32_t color)
-{
-    uint8_t *bitmap;
-    uint32_t *dst;
-    uint32_t bw;
-    uint32_t bh;
-    int i;
-
-    bw = bbox.right - bbox.left;
-    bh = bbox.bottom - bbox.top;
-
-    bitmap = malloc(bw * bh * 4);
-    dst = (uint32_t *)bitmap;
-
-    for (i = 0 ; i < bh * bw ; ++i, ++dst) {
-        *dst = color;
-    }
-
-    return test_spice_create_update_from_bitmap(surface_id, bbox, bitmap, 0, NULL);
-}
-
-static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t surface_id, int t)
+static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t surface_id)
 {
     int top, left;
     uint8_t *dst;
@@ -202,10 +149,9 @@ static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t sur
     int i;
     QXLRect bbox;
 
-    draw_pos(test, t, &left, &top);
-    if ((t % angle_parts) == 0) {
-        c_i++;
-    }
+    left = 100;
+    top = 100;
+
 
     if (surface_id != 0) {
         color = (color + 1) % 2;
@@ -213,10 +159,12 @@ static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t sur
         color = surface_id;
     }
 
+    c_i ++;
+
     unique++;
 
-    bw       = test->primary_width/SINGLE_PART;
-    bh       = 48;
+    bw       = 8;
+    bh       = 16;
 
     bitmap = dst = malloc(bw * bh * 4);
     //printf("allocated %p\n", dst);
@@ -233,43 +181,6 @@ static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t sur
     return test_spice_create_update_from_bitmap(surface_id, bbox, bitmap, 0, NULL);
 }
 
-static SimpleSpiceUpdate *test_spice_create_update_copy_bits(Test *test, uint32_t surface_id)
-{
-    SimpleSpiceUpdate *update;
-    QXLDrawable *drawable;
-    int bw, bh;
-    QXLRect bbox = {
-        .left = 10,
-        .top = 0,
-    };
-
-    update   = calloc(sizeof(*update), 1);
-    drawable = &update->drawable;
-
-    bw       = test->primary_width/SINGLE_PART;
-    bh       = 48;
-    bbox.right = bbox.left + bw;
-    bbox.bottom = bbox.top + bh;
-    //printf("allocated %p, %p\n", update, update->bitmap);
-
-    drawable->surface_id      = surface_id;
-
-    drawable->bbox            = bbox;
-    drawable->clip.type       = SPICE_CLIP_TYPE_NONE;
-    drawable->effect          = QXL_EFFECT_OPAQUE;
-    simple_set_release_info(&drawable->release_info, (intptr_t)update);
-    drawable->type            = QXL_COPY_BITS;
-    drawable->surfaces_dest[0] = -1;
-    drawable->surfaces_dest[1] = -1;
-    drawable->surfaces_dest[2] = -1;
-
-    drawable->u.copy_bits.src_pos.x = 0;
-    drawable->u.copy_bits.src_pos.y = 0;
-
-    set_cmd(&update->ext, QXL_CMD_DRAW, (intptr_t)drawable);
-
-    return update;
-}
 
 static void create_primary_surface(Test *test, uint32_t width,
                                    uint32_t height)
@@ -406,62 +317,13 @@ static void produce_command(Test *test)
         command->cb(test, command);
     }
     switch (command->command) {
-        case SLEEP:
-             printf("sleep %u seconds\n", command->sleep.secs);
-             sleep(command->sleep.secs);
-             break;
-        case PATH_PROGRESS:
-            path_progress(&path);
-            break;
-        case SIMPLE_UPDATE: {
-            QXLRect rect = {
-                .left = 0,
-                .right = (test->target_surface == 0 ? test->primary_width : test->width),
-                .top = 0,
-                .bottom = (test->target_surface == 0 ? test->primary_height : test->height)
-            };
-            if (rect.right > 0 && rect.bottom > 0) {
-                qxl_worker->update_area(qxl_worker, test->target_surface, &rect, NULL, 0, 1);
-            }
-            break;
-        }
-
         /* Drawing commands, they all push a command to the command ring */
-        case SIMPLE_COPY_BITS:
-        case SIMPLE_DRAW_SOLID:
-        case SIMPLE_DRAW_BITMAP:
         case SIMPLE_DRAW: {
             SimpleSpiceUpdate *update;
-
-            switch (command->command) {
-            case SIMPLE_COPY_BITS:
-                update = test_spice_create_update_copy_bits(test, 0);
-                break;
-            case SIMPLE_DRAW:
-                update = test_spice_create_update_draw(test, 0, path.t);
-                break;
-            case SIMPLE_DRAW_BITMAP:
-                update = test_spice_create_update_from_bitmap(command->bitmap.surface_id,
-                        command->bitmap.bbox, command->bitmap.bitmap,
-                        command->bitmap.num_clip_rects, command->bitmap.clip_rects);
-                break;
-            case SIMPLE_DRAW_SOLID:
-                update = test_spice_create_update_solid(command->solid.surface_id,
-                        command->solid.bbox, command->solid.color);
-                break;
-            }
+            update = test_spice_create_update_draw(test, 0);
             push_command(&update->ext);
             break;
         }
-
-        case DESTROY_PRIMARY:
-            qxl_worker->destroy_primary_surface(qxl_worker, 0);
-            break;
-
-        case CREATE_PRIMARY:
-            create_primary_surface(test,
-                  command->create_primary.width, command->create_primary.height);
-            break;
     }
     test->cmd_index = (test->cmd_index + 1) % test->num_commands;
 }
@@ -739,7 +601,6 @@ Test *test_new(SpiceCoreInterface *core)
     }
 
     cursor_init();
-    path_init(&path, 0, angle_parts);
     test->has_secondary = 0;
     test->wakeup_timer = core->timer_add(do_wakeup, test);
     return test;
