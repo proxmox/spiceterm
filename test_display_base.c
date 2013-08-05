@@ -326,7 +326,6 @@ static int req_cmd_notification(QXLInstance *qin)
     test->core->timer_start(test->wakeup_timer, test->wakeup_ms);
     return TRUE;
 }
-
 static void do_wakeup(void *opaque)
 {
     Test *test = opaque;
@@ -480,6 +479,24 @@ static void set_client_capabilities(QXLInstance *qin,
     }
 }
 
+static int client_count = 0;
+
+static void client_connected(Test *test)
+{
+    printf("Client connected\n");
+    client_count++;
+}
+
+static void client_disconnected(Test *test)
+{    
+
+    if (client_count > 0) {
+        client_count--;
+        printf("Client disconnected\n");
+        exit(0); // fixme: cleanup?
+    }
+}
+
 QXLInterface display_sif = {
     .base = {
         .type = SPICE_INTERFACE_QXL,
@@ -512,19 +529,19 @@ void test_add_display_interface(Test* test)
 
 static int vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
 {
-    printf("%s: %d\n", __func__, len);
+//    printf("%s: %d\n", __func__, len);
     return len;
 }
 
 static int vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
 {
-    printf("%s: %d\n", __func__, len);
+//    printf("%s: %d\n", __func__, len);
     return 0;
 }
 
 static void vmc_state(SpiceCharDeviceInstance *sin, int connected)
 {
-    printf("%s: %d\n", __func__, connected);
+//    printf("%s: %d\n", __func__, connected);
 }
 
 static SpiceCharDeviceInterface vdagent_sif = {
@@ -604,6 +621,9 @@ Test *test_new(SpiceCoreInterface *core)
     int port = 5912;
     Test *test = g_new0(Test, 1);
     SpiceServer* server = spice_server_new();
+
+    test->on_client_connected = client_connected,
+    test->on_client_disconnected = client_disconnected,
 
     test->qxl_instance.base.sif = &display_sif.base;
     test->qxl_instance.id = 0;
