@@ -37,7 +37,7 @@ int main(void)
  
     test_add_agent_interface(test->server);
 
-    test_add_keyboard_interface(test->server);
+    test_add_keyboard_interface(test);
     
     test_set_simple_command_list(test, simple_commands, COUNT(simple_commands));
 

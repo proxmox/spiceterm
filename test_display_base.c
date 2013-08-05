@@ -125,7 +125,7 @@ SimpleSpiceUpdate *test_spice_create_update_from_bitmap(uint32_t surface_id,
     return update;
 }
 
-static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t surface_id)
+static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c)
 {
     int top, left;
     uint8_t *dst;
@@ -134,18 +134,18 @@ static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t sur
     int i, j;
     QXLRect bbox;
 
-    left = 100;
-    top = 100;
+    left = x*8;
+    top = y*16;
 
+    printf("DRAW %d %d %d\n", left, top, c);
+ 
     unique++;
 
     bw       = 8;
     bh       = 16;
 
     bitmap = dst = malloc(bw * bh * 4);
-    //printf("allocated %p\n", dst);
 
-    int c = 65;
     unsigned char *data = vt_font_data + c*16;
     unsigned char d = *data;
 
@@ -169,7 +169,7 @@ static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t sur
     bbox.left = left; bbox.top = top;
     bbox.right = left + bw; bbox.bottom = top + bh;
 
-    return test_spice_create_update_from_bitmap(surface_id, bbox, bitmap);
+    return test_spice_create_update_from_bitmap(0, bbox, bitmap);
 }
 
 
@@ -291,54 +291,12 @@ static int get_command(QXLInstance *qin, struct QXLCommandExt *ext)
     return TRUE;
 }
 
-static void produce_command(Test *test)
-{
-    Command *command;
-    QXLWorker *qxl_worker = test->qxl_worker;
-
-    g_assert(qxl_worker);
-
-    if (!test->num_commands) {
-        usleep(1000);
-        return;
-    }
-
-    command = &test->commands[test->cmd_index];
-    if (command->cb) {
-        command->cb(test, command);
-    }
-    switch (command->command) {
-        /* Drawing commands, they all push a command to the command ring */
-        case SIMPLE_DRAW: {
-            SimpleSpiceUpdate *update;
-            update = test_spice_create_update_draw(test, 0);
-            push_command(&update->ext);
-            break;
-        }
-    }
-    test->cmd_index = (test->cmd_index + 1) % test->num_commands;
-}
-
 static int req_cmd_notification(QXLInstance *qin)
 {
     Test *test = SPICE_CONTAINEROF(qin, Test, qxl_instance);
 
-    test->core->timer_start(test->wakeup_timer, test->wakeup_ms);
+    //test->core->timer_start(test->wakeup_timer, test->wakeup_ms);
     return TRUE;
-}
-
-static void do_wakeup(void *opaque)
-{
-    Test *test = opaque;
-    int notify;
-
-    test->cursor_notify = NOTIFY_CURSOR_BATCH;
-    for (notify = NOTIFY_DISPLAY_BATCH; notify > 0;--notify) {
-        produce_command(test);
-    }
-
-    test->core->timer_start(test->wakeup_timer, test->wakeup_ms);
-    test->qxl_worker->wakeup(test->qxl_worker);
 }
 
 static void release_resource(QXLInstance *qin, struct QXLReleaseInfoExt release_info)
@@ -578,9 +536,21 @@ void test_add_agent_interface(SpiceServer *server)
     spice_server_add_interface(server, &vdagent_sin.base);
 }
 
+static int my_charcode = 65;
+static int my_posx = 0;
 static void kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
-    printf("KEYCODE %u\n", frag);
+    Test *test = SPICE_CONTAINEROF(sin, Test, keyboard_sin);
+
+    printf("KEYCODE %u %p\n", frag, test);
+
+    SimpleSpiceUpdate *update;
+    update = test_draw_char(test, my_posx, 10, my_charcode);
+    my_posx++;
+    my_charcode++;
+    push_command(&update->ext);
+
+    test->qxl_worker->wakeup(test->qxl_worker);
 }
 
 static uint8_t kbd_get_leds(SpiceKbdInstance *sin)
@@ -597,15 +567,9 @@ static SpiceKbdInterface keyboard_sif = {
     .get_leds           = kbd_get_leds,
 };
 
-SpiceKbdInstance keyboard_sin = {
-    .base = {
-        .sif = &keyboard_sif.base,
-    },
-};
-
-void test_add_keyboard_interface(SpiceServer *server)
+void test_add_keyboard_interface(Test* test)
 {
-    spice_server_add_interface(server, &keyboard_sin.base);
+    spice_server_add_interface(test->server, &test->keyboard_sin.base);
 }
 
 void test_set_simple_command_list(Test *test, int *simple_commands, int num_commands)
@@ -640,9 +604,11 @@ Test *test_new(SpiceCoreInterface *core)
     test->qxl_instance.base.sif = &display_sif.base;
     test->qxl_instance.id = 0;
 
+    test->keyboard_sin.base.sif = &keyboard_sif.base;
+ 
     test->core = core;
     test->server = server;
-    test->wakeup_ms = 50;
+
     test->cursor_notify = NOTIFY_CURSOR_BATCH;
     // some common initialization for all display tests
     printf("TESTER: listening on port %d (unsecure)\n", port);
@@ -655,7 +621,6 @@ Test *test_new(SpiceCoreInterface *core)
 
     cursor_init();
     test->has_secondary = 0;
-    test->wakeup_timer = core->timer_add(do_wakeup, test);
 
     int timeout = 10; // max time to wait for client connection
     test->conn_timeout_timer = core->timer_add(do_conn_timeout, test);

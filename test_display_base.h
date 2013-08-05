@@ -89,12 +89,11 @@ struct Test {
     QXLInstance qxl_instance;
     QXLWorker *qxl_worker;
 
+    SpiceKbdInstance keyboard_sin;
+
     uint8_t primary_surface[MAX_HEIGHT * MAX_WIDTH * 4];
     int primary_height;
     int primary_width;
-
-    SpiceTimer *wakeup_timer;
-    int wakeup_ms;
 
     SpiceTimer *conn_timeout_timer;
 
@@ -123,7 +122,7 @@ void test_set_simple_command_list(Test *test, int *command, int num_commands);
 void test_set_command_list(Test *test, Command *command, int num_commands);
 void test_add_display_interface(Test *test);
 void test_add_agent_interface(SpiceServer *server); // TODO - Test *test
-void test_add_keyboard_interface(SpiceServer *server);
+void test_add_keyboard_interface(Test *test);
 Test* test_new(SpiceCoreInterface* core);
 
 uint32_t test_get_width(void);
