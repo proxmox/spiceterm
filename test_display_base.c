@@ -130,20 +130,11 @@ static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t sur
     uint8_t *dst;
     uint8_t *bitmap;
     int bw, bh;
-    int i;
+    int i, j;
     QXLRect bbox;
 
     left = 100;
     top = 100;
-
-
-    if (surface_id != 0) {
-        color = (color + 1) % 2;
-    } else {
-        color = surface_id;
-    }
-
-    c_i ++;
 
     unique++;
 
@@ -153,15 +144,30 @@ static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t sur
     bitmap = dst = malloc(bw * bh * 4);
     //printf("allocated %p\n", dst);
 
-    for (i = 0 ; i < bh * bw ; ++i, dst+=4) {
-        *dst = (color+i % 255);
-        *(dst+((1+c_i)%3)) = 255 - color;
-        *(dst+((2+c_i)%3)) = (color * (color + i)) & 0xff;
-        *(dst+((3+c_i)%3)) = 0;
+    int c = 65;
+    unsigned char *data = vt_font_data + c*16;
+    unsigned char d = *data;
+
+    for (j = 0; j < 16; j++) {
+        for (i = 0; i < 8; i++) {
+            if ((i&7) == 0) {
+                d=*data;
+                data++;
+            }
+            if (d&0x80) {
+                 *(dst) = 255;
+                 *(dst+1) = 255;
+                 *(dst+2) = 255;
+                 *(dst+3) = 0;
+            }
+            d<<=1;
+            dst += 4;
+        }
     }
 
     bbox.left = left; bbox.top = top;
     bbox.right = left + bw; bbox.bottom = top + bh;
+
     return test_spice_create_update_from_bitmap(surface_id, bbox, bitmap);
 }
 
