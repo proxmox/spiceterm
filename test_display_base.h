@@ -96,6 +96,8 @@ struct Test {
     SpiceTimer *wakeup_timer;
     int wakeup_ms;
 
+    SpiceTimer *conn_timeout_timer;
+
     int cursor_notify;
 
     uint8_t secondary_surface[SURF_WIDTH * SURF_HEIGHT * 4];

@@ -326,6 +326,7 @@ static int req_cmd_notification(QXLInstance *qin)
     test->core->timer_start(test->wakeup_timer, test->wakeup_ms);
     return TRUE;
 }
+
 static void do_wakeup(void *opaque)
 {
     Test *test = opaque;
@@ -497,6 +498,17 @@ static void client_disconnected(Test *test)
     }
 }
 
+static void do_conn_timeout(void *opaque)
+{
+    Test *test = opaque;
+
+    if (client_count <= 0) {
+        printf("do_conn_timeout\n");
+        exit (0); // fixme: cleanup?
+    }
+}
+
+
 QXLInterface display_sif = {
     .base = {
         .type = SPICE_INTERFACE_QXL,
@@ -644,6 +656,11 @@ Test *test_new(SpiceCoreInterface *core)
     cursor_init();
     test->has_secondary = 0;
     test->wakeup_timer = core->timer_add(do_wakeup, test);
+
+    int timeout = 10; // max time to wait for client connection
+    test->conn_timeout_timer = core->timer_add(do_conn_timeout, test);
+    test->core->timer_start(test->conn_timeout_timer, timeout*1000);
+
     return test;
 }
 
