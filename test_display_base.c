@@ -11,6 +11,7 @@
 
 #include "glyphs.h"
 #include <spice.h>
+#include <spice/enums.h>
 #include <spice/macros.h>
 #include <spice/qxl_dev.h>
 
@@ -546,6 +547,36 @@ SpiceCharDeviceInstance vdagent_sin = {
 void test_add_agent_interface(SpiceServer *server)
 {
     spice_server_add_interface(server, &vdagent_sin.base);
+}
+
+static void kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
+{
+    printf("KEYCODE %u\n", frag);
+}
+
+static uint8_t kbd_get_leds(SpiceKbdInstance *sin)
+{
+    return 0;
+}
+
+static SpiceKbdInterface keyboard_sif = {
+    .base.type          = SPICE_INTERFACE_KEYBOARD ,
+    .base.description   = "spiceterm keyboard device",
+    .base.major_version = SPICE_INTERFACE_KEYBOARD_MAJOR,
+    .base.minor_version = SPICE_INTERFACE_KEYBOARD_MINOR,
+    .push_scan_freg     = kbd_push_key,
+    .get_leds           = kbd_get_leds,
+};
+
+SpiceKbdInstance keyboard_sin = {
+    .base = {
+        .sif = &keyboard_sif.base,
+    },
+};
+
+void test_add_keyboard_interface(SpiceServer *server)
+{
+    spice_server_add_interface(server, &keyboard_sin.base);
 }
 
 void test_set_simple_command_list(Test *test, int *simple_commands, int num_commands)
