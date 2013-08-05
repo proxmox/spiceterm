@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <getopt.h>
 
+#include "glyphs.h"
 #include <spice.h>
 #include <spice/macros.h>
 #include <spice/qxl_dev.h>
@@ -77,9 +78,7 @@ static void simple_set_release_info(QXLReleaseInfo *info, intptr_t ptr)
 /* bitmap and rects are freed, so they must be allocated with malloc */
 SimpleSpiceUpdate *test_spice_create_update_from_bitmap(uint32_t surface_id,
                                                         QXLRect bbox,
-                                                        uint8_t *bitmap,
-                                                        uint32_t num_clip_rects,
-                                                        QXLRect *clip_rects)
+                                                        uint8_t *bitmap)
 {
     SimpleSpiceUpdate *update;
     QXLDrawable *drawable;
@@ -97,22 +96,7 @@ SimpleSpiceUpdate *test_spice_create_update_from_bitmap(uint32_t surface_id,
     drawable->surface_id      = surface_id;
 
     drawable->bbox            = bbox;
-    if (num_clip_rects == 0) {
-        drawable->clip.type       = SPICE_CLIP_TYPE_NONE;
-    } else {
-        QXLClipRects *cmd_clip;
-
-        cmd_clip = calloc(sizeof(QXLClipRects) + num_clip_rects*sizeof(QXLRect), 1);
-        cmd_clip->num_rects = num_clip_rects;
-        cmd_clip->chunk.data_size = num_clip_rects*sizeof(QXLRect);
-        cmd_clip->chunk.prev_chunk = cmd_clip->chunk.next_chunk = 0;
-        memcpy(cmd_clip + 1, clip_rects, cmd_clip->chunk.data_size);
-
-        drawable->clip.type = SPICE_CLIP_TYPE_RECTS;
-        drawable->clip.data = (intptr_t)cmd_clip;
-
-        free(clip_rects);
-    }
+    drawable->clip.type       = SPICE_CLIP_TYPE_NONE;
     drawable->effect          = QXL_EFFECT_OPAQUE;
     simple_set_release_info(&drawable->release_info, (intptr_t)update);
     drawable->type            = QXL_DRAW_COPY;
@@ -178,7 +162,7 @@ static SimpleSpiceUpdate *test_spice_create_update_draw(Test *test, uint32_t sur
 
     bbox.left = left; bbox.top = top;
     bbox.right = left + bw; bbox.bottom = top + bh;
-    return test_spice_create_update_from_bitmap(surface_id, bbox, bitmap, 0, NULL);
+    return test_spice_create_update_from_bitmap(surface_id, bbox, bitmap);
 }
 
 
