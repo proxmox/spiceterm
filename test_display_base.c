@@ -102,13 +102,8 @@ Path path;
 
 static void draw_pos(Test *test, int t, int *x, int *y)
 {
-#ifdef CIRCLE
-    *y = test->primary_height/2 + (test->primary_height/3)*cos(t*2*M_PI/angle_parts);
-    *x = test->primary_width/2 + (test->primary_width/3)*sin(t*2*M_PI/angle_parts);
-#else
     *y = test->primary_height*(t % SINGLE_PART)/SINGLE_PART;
     *x = ((test->primary_width/SINGLE_PART)*(t / SINGLE_PART)) % test->primary_width;
-#endif
 }
 
 /* bitmap and rects are freed, so they must be allocated with malloc */
@@ -276,53 +271,6 @@ static SimpleSpiceUpdate *test_spice_create_update_copy_bits(Test *test, uint32_
     return update;
 }
 
-static int format_to_bpp(int format)
-{
-    switch (format) {
-    case SPICE_SURFACE_FMT_8_A:
-        return 1;
-    case SPICE_SURFACE_FMT_16_555:
-    case SPICE_SURFACE_FMT_16_565:
-        return 2;
-    case SPICE_SURFACE_FMT_32_xRGB:
-    case SPICE_SURFACE_FMT_32_ARGB:
-        return 4;
-    }
-    abort();
-}
-
-static SimpleSurfaceCmd *create_surface(int surface_id, int format, int width, int height, uint8_t *data)
-{
-    SimpleSurfaceCmd *simple_cmd = calloc(sizeof(SimpleSurfaceCmd), 1);
-    QXLSurfaceCmd *surface_cmd = &simple_cmd->surface_cmd;
-    int bpp = format_to_bpp(format);
-
-    set_cmd(&simple_cmd->ext, QXL_CMD_SURFACE, (intptr_t)surface_cmd);
-    simple_set_release_info(&surface_cmd->release_info, (intptr_t)simple_cmd);
-    surface_cmd->type = QXL_SURFACE_CMD_CREATE;
-    surface_cmd->flags = 0; // ?
-    surface_cmd->surface_id = surface_id;
-    surface_cmd->u.surface_create.format = format;
-    surface_cmd->u.surface_create.width = width;
-    surface_cmd->u.surface_create.height = height;
-    surface_cmd->u.surface_create.stride = -width * bpp;
-    surface_cmd->u.surface_create.data = (intptr_t)data;
-    return simple_cmd;
-}
-
-static SimpleSurfaceCmd *destroy_surface(int surface_id)
-{
-    SimpleSurfaceCmd *simple_cmd = calloc(sizeof(SimpleSurfaceCmd), 1);
-    QXLSurfaceCmd *surface_cmd = &simple_cmd->surface_cmd;
-
-    set_cmd(&simple_cmd->ext, QXL_CMD_SURFACE, (intptr_t)surface_cmd);
-    simple_set_release_info(&surface_cmd->release_info, (intptr_t)simple_cmd);
-    surface_cmd->type = QXL_SURFACE_CMD_DESTROY;
-    surface_cmd->flags = 0; // ?
-    surface_cmd->surface_id = surface_id;
-    return simple_cmd;
-}
-
 static void create_primary_surface(Test *test, uint32_t width,
                                    uint32_t height)
 {
@@ -388,10 +336,6 @@ static void set_compression_level(QXLInstance *qin, int level)
 static void set_mm_time(QXLInstance *qin, uint32_t mm_time)
 {
 }
-
-// we now have a secondary surface
-#define MAX_SURFACE_NUM 2
-
 static void get_init_info(QXLInstance *qin, QXLDevInitInfo *info)
 {
     memset(info, 0, sizeof(*info));
@@ -399,8 +343,9 @@ static void get_init_info(QXLInstance *qin, QXLDevInitInfo *info)
     info->num_memslots_groups = 1;
     info->memslot_id_bits = 1;
     info->memslot_gen_bits = 1;
-    info->n_surfaces = MAX_SURFACE_NUM;
+    info->n_surfaces = 1;
 }
+
 
 // We shall now have a ring of commands, so that we can update
 // it from a separate thread - since get_command is called from
@@ -450,9 +395,6 @@ static void produce_command(Test *test)
     QXLWorker *qxl_worker = test->qxl_worker;
 
     g_assert(qxl_worker);
-
-    if (test->has_secondary)
-        test->target_surface = 1;
 
     if (!test->num_commands) {
         usleep(1000);
@@ -512,43 +454,13 @@ static void produce_command(Test *test)
             break;
         }
 
-        case SIMPLE_CREATE_SURFACE: {
-            SimpleSurfaceCmd *update;
-            if (command->create_surface.data) {
-                g_assert(command->create_surface.surface_id > 0);
-                g_assert(command->create_surface.surface_id < MAX_SURFACE_NUM);
-                g_assert(command->create_surface.surface_id == 1);
-                update = create_surface(command->create_surface.surface_id,
-                                        command->create_surface.format,
-                                        command->create_surface.width,
-                                        command->create_surface.height,
-                                        command->create_surface.data);
-            } else {
-                update = create_surface(test->target_surface, SPICE_SURFACE_FMT_32_xRGB,
-                                        SURF_WIDTH, SURF_HEIGHT,
-                                        test->secondary_surface);
-            }
-            push_command(&update->ext);
-            test->has_secondary = 1;
-            break;
-        }
-
-        case SIMPLE_DESTROY_SURFACE: {
-            SimpleSurfaceCmd *update;
-            test->has_secondary = 0;
-            update = destroy_surface(test->target_surface);
-            test->target_surface = 0;
-            push_command(&update->ext);
-            break;
-        }
-
         case DESTROY_PRIMARY:
             qxl_worker->destroy_primary_surface(qxl_worker, 0);
             break;
 
         case CREATE_PRIMARY:
             create_primary_surface(test,
-                    command->create_primary.width, command->create_primary.height);
+                  command->create_primary.width, command->create_primary.height);
             break;
     }
     test->cmd_index = (test->cmd_index + 1) % test->num_commands;

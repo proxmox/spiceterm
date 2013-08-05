@@ -23,13 +23,12 @@ void pinger(void *opaque)
 }
 
 int simple_commands[] = {
-    //SIMPLE_CREATE_SURFACE,
+    SIMPLE_CREATE_SURFACE,
     //SIMPLE_DRAW,
     //SIMPLE_DESTROY_SURFACE,
-    //PATH_PROGRESS,
     SIMPLE_DRAW,
     //SIMPLE_COPY_BITS,
-    SIMPLE_UPDATE,
+    //SIMPLE_UPDATE,
 };
 
 int main(void)
