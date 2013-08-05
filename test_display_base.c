@@ -861,7 +861,10 @@ Test *test_new(SpiceCoreInterface *core)
     printf("TESTER: listening on port %d (unsecure)\n", port);
     spice_server_set_port(server, port);
     spice_server_set_noauth(server);
-    spice_server_init(server, core);
+    int res = spice_server_init(server, core);
+    if (res != 0) {
+        g_error("spice_server_init failed, res = %d\n", res);
+    }
 
     cursor_init();
     path_init(&path, 0, angle_parts);

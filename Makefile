@@ -7,3 +7,7 @@ all: ${PROGRAMS}
 
 test_display_no_ssl: ${SOURCES} ${HEADERS}
 	gcc ${SOURCES} -o $@ $(shell pkg-config --cflags --libs spice-protocol,spice-server)
+
+.PHONY: test
+test: test_display_no_ssl
+	./test_display_no_ssl & remote-viewer spice://localhost:5912

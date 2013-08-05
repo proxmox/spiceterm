@@ -7,19 +7,17 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "test_display_base.h"
 
 SpiceCoreInterface *core;
 SpiceTimer *ping_timer;
 
-void show_channels(SpiceServer *server);
-
-int ping_ms = 100;
+int ping_ms = 1000;
 
 void pinger(void *opaque)
 {
-    // show_channels is not thread safe - fails if disconnections / connections occur
-    //show_channels(server);
+    printf("TEST PINGER\n");
 
     core->timer_start(ping_timer, ping_ms);
 }
