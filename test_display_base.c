@@ -57,43 +57,12 @@ static int unique = 1;
 static int color = -1;
 static int c_i = 0;
 
-/* Used for automated tests */
-static int control = 3; //used to know when we can take a screenshot
-static int rects = 16; //number of rects that will be draw
-static int has_automated_tests = 0; //automated test flag
-
 __attribute__((noreturn))
 static void sigchld_handler(int signal_num) // wait for the child process and exit
 {
     int status;
     wait(&status);
     exit(0);
-}
-
-static void regression_test(void)
-{
-    pid_t pid;
-
-    if (--rects != 0) {
-        return;
-    }
-
-    rects = 16;
-
-    if (--control != 0) {
-        return;
-    }
-
-    pid = fork();
-    if (pid == 0) {
-        char buf[PATH_MAX];
-        char *envp[] = {buf, NULL};
-
-        snprintf(buf, sizeof(buf), "PATH=%s", getenv("PATH"));
-        execve("regression_test.py", NULL, envp);
-    } else if (pid > 0) {
-        return;
-    }
 }
 
 static void set_cmd(QXLCommandExt *ext, uint32_t type, QXLPHYSICAL data)
@@ -522,15 +491,6 @@ static void produce_command(Test *test)
         case SIMPLE_DRAW: {
             SimpleSpiceUpdate *update;
 
-            if (has_automated_tests)
-            {
-                if (control == 0) {
-                     return;
-                }
-
-                regression_test();
-            }
-
             switch (command->command) {
             case SIMPLE_COPY_BITS:
                 update = test_spice_create_update_copy_bits(test, 0);
@@ -873,34 +833,19 @@ Test *test_new(SpiceCoreInterface *core)
     return test;
 }
 
-void init_automated()
-{
-    struct sigaction sa;
-
-    memset(&sa, 0, sizeof sa);
-    sa.sa_handler = &sigchld_handler;
-    sigaction(SIGCHLD, &sa, NULL);
-}
 
 __attribute__((noreturn))
 void usage(const char *argv0, const int exitcode)
 {
-#ifdef AUTOMATED_TESTS
-    const char *autoopt=" [--automated-tests]";
-#else
-    const char *autoopt="";
-#endif
 
-    printf("usage: %s%s\n", argv0, autoopt);
+    printf("usage: %s\n", argv0);
     exit(exitcode);
 }
 
 void spice_test_config_parse_args(int argc, char **argv)
 {
     struct option options[] = {
-#ifdef AUTOMATED_TESTS
-        {"automated-tests", no_argument, &has_automated_tests, 1},
-#endif
+//        {"automated-tests", no_argument, &has_automated_tests, 1},
         {NULL, 0, NULL, 0},
     };
     int option_index;
@@ -919,9 +864,6 @@ void spice_test_config_parse_args(int argc, char **argv)
     if (argc > optind) {
         printf("unknown argument '%s'\n", argv[optind]);
         usage(argv[0], EXIT_FAILURE);
-    }
-    if (has_automated_tests) {
-        init_automated();
     }
     return;
 }
