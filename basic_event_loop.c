@@ -34,7 +34,7 @@ Ring timers;
 
 static SpiceTimer* timer_add(SpiceTimerFunc func, void *opaque)
 {
-    SpiceTimer *timer = calloc(sizeof(SpiceTimer), 1);
+    SpiceTimer *timer = g_new0(SpiceTimer, 1);
 
     timer->func = func;
     timer->opaque = opaque;
@@ -85,7 +85,7 @@ int watch_count = 0;
 
 static SpiceWatch *watch_add(int fd, int event_mask, SpiceWatchFunc func, void *opaque)
 {
-    SpiceWatch *watch = malloc(sizeof(SpiceWatch));
+    SpiceWatch *watch = g_new0(SpiceWatch, 1);
 
     DPRINTF(0, "adding %p, fd=%d at %d", watch,
         fd, watch_count);
@@ -247,7 +247,7 @@ void basic_event_loop_mainloop(void)
                 if (watch->removed) {
                     printf("freeing watch %p\n", watch);
                     ring_remove(&watch->link);
-                    free(watch);
+                    g_free(watch);
                 }
             }
         }
