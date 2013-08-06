@@ -6,6 +6,16 @@
 #include "basic_event_loop.h"
 
 
+typedef struct TextAttributes {
+  unsigned int fgcol:4;
+  unsigned int bgcol:4;
+  unsigned int bold:1;
+  unsigned int uline:1;
+  unsigned int blink:1;
+  unsigned int invers:1;
+  unsigned int unvisible:1;
+} TextAttributes;
+
 #define COUNT(x) ((sizeof(x)/sizeof(x[0])))
 
 /*
@@ -96,6 +106,7 @@ struct Test {
     int primary_width;
 
     SpiceTimer *conn_timeout_timer;
+    SpiceWatch *mwatch; /* watch master pty */
 
     int cursor_notify;
 
@@ -124,6 +135,8 @@ void test_add_display_interface(Test *test);
 void test_add_agent_interface(SpiceServer *server); // TODO - Test *test
 void test_add_keyboard_interface(Test *test);
 Test* test_new(SpiceCoreInterface* core);
+
+void test_draw_update_char(Test *test, int x, int y, int c, TextAttributes attrib);
 
 uint32_t test_get_width(void);
 uint32_t test_get_height(void);

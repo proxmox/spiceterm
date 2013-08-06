@@ -184,7 +184,6 @@ static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c)
     return test_spice_create_update_from_bitmap(0, bbox, bitmap);
 }
 
-
 static void create_primary_surface(Test *test, uint32_t width,
                                    uint32_t height)
 {
@@ -565,6 +564,35 @@ static void kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
     test->qxl_worker->wakeup(test->qxl_worker);
 }
 
+void test_draw_update_char(Test *test, int x, int y, int c, TextAttributes attrib)
+{
+    int fg, bg;
+
+    if (attrib.invers) {
+        bg = attrib.fgcol;
+        fg = attrib.bgcol;
+    } else {
+        bg = attrib.bgcol;
+        fg = attrib.fgcol;
+    }
+
+    if (attrib.bold) {
+        fg += 8;
+    }
+
+    // unsuported attributes = (attrib.blink || attrib.unvisible)
+
+    //if (attrib.uline) {
+    //rfbDrawLine (vt->screen, rx, ry + 14, rxe, ry + 14, fg);
+    //}
+
+    SimpleSpiceUpdate *update;
+    update = test_draw_char(test, x, y, c);
+    push_command(&update->ext);
+
+    test->qxl_worker->wakeup(test->qxl_worker);
+}
+
 static uint8_t kbd_get_leds(SpiceKbdInstance *sin)
 {
     return 0;
@@ -581,6 +609,7 @@ static SpiceKbdInterface keyboard_sif = {
 
 void test_add_keyboard_interface(Test* test)
 {
+    g_error("teste");
     spice_server_add_interface(test->server, &test->keyboard_sin.base);
 }
 
