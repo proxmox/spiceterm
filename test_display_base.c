@@ -40,8 +40,8 @@ static void test_spice_destroy_update(SimpleSpiceUpdate *update)
         uint8_t *ptr = (uint8_t*)update->drawable.clip.data;
         free(ptr);
     }
-    free(update->bitmap);
-    free(update);
+    g_free(update->bitmap);
+    g_free(update);
 }
 
 #define DEFAULT_WIDTH 640
@@ -76,7 +76,7 @@ static void simple_set_release_info(QXLReleaseInfo *info, intptr_t ptr)
     //info->group_id = MEM_SLOT_GROUP_ID;
 }
 
-/* bitmap and rects are freed, so they must be allocated with malloc */
+/* bitmap are freed, so they must be allocated with g_malloc */
 SimpleSpiceUpdate *test_spice_create_update_from_bitmap(uint32_t surface_id,
                                                         QXLRect bbox,
                                                         uint8_t *bitmap)
@@ -89,7 +89,7 @@ SimpleSpiceUpdate *test_spice_create_update_from_bitmap(uint32_t surface_id,
     bh = bbox.bottom - bbox.top;
     bw = bbox.right - bbox.left;
 
-    update   = calloc(sizeof(*update), 1);
+    update   = g_new0(SimpleSpiceUpdate, 1);
     update->bitmap = bitmap;
     drawable = &update->drawable;
     image    = &update->image;
@@ -137,17 +137,24 @@ static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c)
     left = x*8;
     top = y*16;
 
-    printf("DRAW %d %d %d\n", left, top, c);
+    printf("DRAWCHAR %d %d %d\n", left, top, c);
  
     unique++;
 
     bw       = 8;
     bh       = 16;
 
-    bitmap = dst = malloc(bw * bh * 4);
+    bitmap = dst = g_malloc(bw * bh * 4);
 
     unsigned char *data = vt_font_data + c*16;
     unsigned char d = *data;
+
+    unsigned char fgc_red = 255;
+    unsigned char fgc_blue = 255;
+    unsigned char fgc_green = 255;
+    unsigned char bgc_red = 0;
+    unsigned char bgc_blue = 0;
+    unsigned char bgc_green = 0;
 
     for (j = 0; j < 16; j++) {
         for (i = 0; i < 8; i++) {
@@ -156,9 +163,14 @@ static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c)
                 data++;
             }
             if (d&0x80) {
-                 *(dst) = 255;
-                 *(dst+1) = 255;
-                 *(dst+2) = 255;
+                 *(dst) = fgc_blue;
+                 *(dst+1) = fgc_green;
+                 *(dst+2) = fgc_red;
+                 *(dst+3) = 0;
+            } else {
+                 *(dst) = bgc_blue;
+                 *(dst+1) = bgc_green;
+                 *(dst+2) = bgc_red;
                  *(dst+3) = 0;
             }
             d<<=1;
