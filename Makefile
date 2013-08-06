@@ -19,3 +19,10 @@ test1: test_display_no_ssl
 .PHONY: test2
 test2: spiceterm
 	./spiceterm & remote-viewer spice://localhost:5912
+
+.PHONY: distclean
+distclean: clean
+
+.PHONY: clean
+clean:
+	rm -rf *~ ${PROGRAMS}
