@@ -117,11 +117,6 @@ struct Test {
     int width;
     int height;
 
-    // qxl scripted rendering commands and io
-    Command *commands;
-    int num_commands;
-    int cmd_index;
-
     int target_surface;
 
     // callbacks
@@ -129,8 +124,6 @@ struct Test {
     void (*on_client_disconnected)(Test *test);
 };
 
-void test_set_simple_command_list(Test *test, int *command, int num_commands);
-void test_set_command_list(Test *test, Command *command, int num_commands);
 void test_add_display_interface(Test *test);
 void test_add_agent_interface(SpiceServer *server); // TODO - Test *test
 void test_add_keyboard_interface(Test *test);

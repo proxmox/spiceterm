@@ -22,10 +22,6 @@ void pinger(void *opaque)
     core->timer_start(ping_timer, ping_ms);
 }
 
-int simple_commands[] = {
-    SIMPLE_DRAW,
-};
-
 int main(void)
 {
     Test *test;
@@ -39,9 +35,6 @@ int main(void)
 
     test_add_keyboard_interface(test);
     
-    test_set_simple_command_list(test, simple_commands, COUNT(simple_commands));
-
-
     //ping_timer = core->timer_add(pinger, NULL);
     //core->timer_start(ping_timer, ping_ms);
 

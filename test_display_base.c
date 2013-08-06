@@ -609,29 +609,8 @@ static SpiceKbdInterface keyboard_sif = {
 
 void test_add_keyboard_interface(Test* test)
 {
-    g_error("teste");
     spice_server_add_interface(test->server, &test->keyboard_sin.base);
 }
-
-void test_set_simple_command_list(Test *test, int *simple_commands, int num_commands)
-{
-    int i;
-
-    /* FIXME: leaks */
-    test->commands = malloc(sizeof(*test->commands) * num_commands);
-    memset(test->commands, 0, sizeof(*test->commands) * num_commands);
-    test->num_commands = num_commands;
-    for (i = 0 ; i < num_commands; ++i) {
-        test->commands[i].command = simple_commands[i];
-    }
-}
-
-void test_set_command_list(Test *test, Command *commands, int num_commands)
-{
-    test->commands = commands;
-    test->num_commands = num_commands;
-}
-
 
 Test *test_new(SpiceCoreInterface *core)
 {
