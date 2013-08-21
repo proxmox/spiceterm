@@ -205,102 +205,84 @@ vncterm_refresh (vncTerm *vt)
 static void
 vncterm_scroll_down (vncTerm *vt, int top, int bottom, int lines)
 {
-  if ((top + lines) >= bottom) {
-    lines = bottom - top -1;
-  }
-
-  if (top < 0 || bottom > vt->height || top >= bottom || lines < 1) {
-    return;
-  }
-
-  g_error("vncterm_scroll_down not implemented");
-
-  /*
-  int h = lines * 16;
-  int y0 = top*16;
-  int y1 = y0 + h;
-  int y2 = bottom*16;
-  int rowstride = vt->screen->paddedWidthInBytes;
-  int rows = (bottom - top - lines)*16;
-
-  char *in = vt->screen->frameBuffer+y0*rowstride;
-  char *out = vt->screen->frameBuffer+y1*rowstride;
-  memmove(out,in, rowstride*rows);
-
-  memset(vt->screen->frameBuffer+y0*rowstride, 0, h*rowstride);
-  rfbMarkRectAsModified (vt->screen, 0, y0, vt->screen->width, y2);
-
-  int i;
-  for(i = bottom - top - lines - 1; i >= 0; i--) {
-    int src = ((vt->y_base + top + i) % vt->total_height)*vt->width;
-    int dst = ((vt->y_base + top + lines + i) % vt->total_height)*vt->width;
-
-    memmove(vt->cells + dst, vt->cells + src, vt->width*sizeof (TextCell));
-  }
-
-  for (i = 0; i < lines; i++) {
-    int j;
-    TextCell *c = vt->cells + ((vt->y_base + top + i) % vt->total_height)*vt->width;
-    for(j = 0; j < vt->width; j++) {
-      c->attrib = vt->default_attrib;
-      c->ch = ' ';
-      c++;
+    if ((top + lines) >= bottom) {
+        lines = bottom - top -1;
     }
-  }
-  */
+
+    if (top < 0 || bottom > vt->height || top >= bottom || lines < 1) {
+        return;
+    }
+
+    int i;
+    for(i = bottom - top - lines - 1; i >= 0; i--) {
+        int src = ((vt->y_base + top + i) % vt->total_height)*vt->width;
+        int dst = ((vt->y_base + top + lines + i) % vt->total_height)*vt->width;
+
+        memmove(vt->cells + dst, vt->cells + src, vt->width*sizeof (TextCell));
+    }
+
+    for (i = 0; i < lines; i++) {
+        int j;
+        TextCell *c = vt->cells + ((vt->y_base + top + i) % vt->total_height)*vt->width;
+        for(j = 0; j < vt->width; j++) {
+            c->attrib = vt->default_attrib;
+            c->ch = ' ';
+            c++;
+        }
+    }
+
+    int h = lines * 16;
+    int y0 = top*16;
+    int y1 = y0 + h;
+    int y2 = bottom*16;
+
+    test_spice_scroll(vt->screen, 0, y1, vt->screen->primary_width, y2, 0, y0);
+    test_spice_clear(vt->screen, 0, y0, vt->screen->primary_width, y1);
 }
 
 static void
 vncterm_scroll_up (vncTerm *vt, int top, int bottom, int lines, int moveattr)
 {
-  if ((top + lines) >= bottom) {
-    lines = bottom - top - 1;
-  }
-
-  if (top < 0 || bottom > vt->height || top >= bottom || lines < 1) {
-    return;
-  }
-
-  g_error("vncterm_scroll_down not implemented");
-
-  /*
-  int h = lines * 16;
-  int y0 = top*16;
-  int y1 = (top + lines)*16;
-  int y2 = bottom*16;
-  int rowstride = vt->screen->paddedWidthInBytes;
-  int rows = (bottom - top - lines)*16;
-
-  char *in = vt->screen->frameBuffer+y1*rowstride;
-  char *out = vt->screen->frameBuffer+y0*rowstride;
-  memmove(out,in, rowstride*rows);
-
-  memset(vt->screen->frameBuffer+(y2-h)*rowstride, 0, h*rowstride);
-
-  rfbMarkRectAsModified (vt->screen, 0, y0, vt->screen->width, y2);
-
-  if (!moveattr) return;
-
-  // move attributes
-
-  int i;
-  for(i = 0; i < (bottom - top - lines); i++) {
-    int dst = ((vt->y_base + top + i) % vt->total_height)*vt->width;
-    int src = ((vt->y_base + top + lines + i) % vt->total_height)*vt->width;
-
-    memmove(vt->cells + dst, vt->cells + src, vt->width*sizeof (TextCell));
-  }
-
-  for (i = 1; i <= lines; i++) {
-    int j;
-    TextCell *c = vt->cells + ((vt->y_base + bottom - i) % vt->total_height)*vt->width;
-    for(j = 0; j < vt->width; j++) {
-      c->attrib = vt->default_attrib;
-      c->ch = ' ';
-      c++;
+    if ((top + lines) >= bottom) {
+        lines = bottom - top - 1;
     }
-  }
-  */
+
+    if (top < 0 || bottom > vt->height || top >= bottom || lines < 1) {
+        return;
+    }
+
+
+    int h = lines * 16;
+    int y0 = top*16;
+    int y1 = (top + lines)*16;
+    int y2 = bottom*16;
+
+    test_spice_scroll(vt->screen, 0, y0, vt->screen->primary_width, y2 -h, 0, y1);
+    test_spice_clear(vt->screen, 0, y2 -h, vt->screen->primary_width, y2);
+    
+    if (!moveattr) {
+        return;
+    }
+
+    // move attributes
+
+    int i;
+    for(i = 0; i < (bottom - top - lines); i++) {
+        int dst = ((vt->y_base + top + i) % vt->total_height)*vt->width;
+        int src = ((vt->y_base + top + lines + i) % vt->total_height)*vt->width;
+
+        memmove(vt->cells + dst, vt->cells + src, vt->width*sizeof (TextCell));
+    }
+
+    for (i = 1; i <= lines; i++) {
+        int j;
+        TextCell *c = vt->cells + ((vt->y_base + bottom - i) % vt->total_height)*vt->width;
+        for(j = 0; j < vt->width; j++) {
+            c->attrib = vt->default_attrib;
+            c->ch = ' ';
+            c++;
+        }
+    }
 }
 
 static void

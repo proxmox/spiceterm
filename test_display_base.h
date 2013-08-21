@@ -139,6 +139,9 @@ void test_add_keyboard_interface(Test *test);
 Test* test_new(SpiceCoreInterface* core);
 
 void test_draw_update_char(Test *test, int x, int y, int c, TextAttributes attrib);
+void test_spice_scroll(Test *test, int x1, int y1, int x2, int y2, int src_x, int src_y);
+void test_spice_clear(Test *test, int x1, int y1, int x2, int y2);
+
 
 uint32_t test_get_width(void);
 uint32_t test_get_height(void);

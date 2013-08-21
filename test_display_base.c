@@ -85,6 +85,29 @@ static void simple_set_release_info(QXLReleaseInfo *info, intptr_t ptr)
     //info->group_id = MEM_SLOT_GROUP_ID;
 }
 
+// We shall now have a ring of commands, so that we can update
+// it from a separate thread - since get_command is called from
+// the worker thread, and we need to sometimes do an update_area,
+// which cannot be done from red_worker context (not via dispatcher,
+// since you get a deadlock, and it isn't designed to be done
+// any other way, so no point testing that).
+
+
+static void push_command(Test *test, QXLCommandExt *ext)
+{
+    g_mutex_lock(test->command_mutex);
+
+    while (test->commands_end - test->commands_start >= COMMANDS_SIZE) {
+        g_cond_wait(test->command_cond, test->command_mutex);
+    }
+    g_assert(test->commands_end - test->commands_start < COMMANDS_SIZE);
+    test->commands[test->commands_end % COMMANDS_SIZE] = ext;
+    test->commands_end++;
+    g_mutex_unlock(test->command_mutex);
+
+    test->qxl_worker->wakeup(test->qxl_worker);
+}
+
 /* bitmap are freed, so they must be allocated with g_malloc */
 SimpleSpiceUpdate *test_spice_create_update_from_bitmap(uint32_t surface_id,
                                                         QXLRect bbox,
@@ -196,6 +219,73 @@ static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c, int fg
     return test_spice_create_update_from_bitmap(0, bbox, bitmap);
 }
 
+void test_spice_scroll(Test *test, int x1, int y1, int x2, int y2, int src_x, int src_y)
+{
+    SimpleSpiceUpdate *update;
+    QXLDrawable *drawable;
+    QXLRect bbox;
+
+    int surface_id = 0; // fixme
+
+    update   = g_new0(SimpleSpiceUpdate, 1);
+    drawable = &update->drawable;
+
+    bbox.left = x1;
+    bbox.top = y1;
+    bbox.right = x2;
+    bbox.bottom = y2;
+
+    drawable->surface_id = surface_id;
+
+    drawable->bbox            = bbox;
+    drawable->clip.type       = SPICE_CLIP_TYPE_NONE;
+    drawable->effect          = QXL_EFFECT_OPAQUE;
+    simple_set_release_info(&drawable->release_info, (intptr_t)update);
+    drawable->type            = QXL_COPY_BITS;
+    drawable->surfaces_dest[0] = -1;
+    drawable->surfaces_dest[1] = -1;
+    drawable->surfaces_dest[2] = -1;
+
+    drawable->u.copy_bits.src_pos.x = src_x;
+    drawable->u.copy_bits.src_pos.y = src_y;
+
+    set_cmd(&update->ext, QXL_CMD_DRAW, (intptr_t)drawable);
+
+    push_command(test, &update->ext);
+}
+
+void test_spice_clear(Test *test, int x1, int y1, int x2, int y2)
+{
+    SimpleSpiceUpdate *update;
+    QXLDrawable *drawable;
+    QXLRect bbox;
+
+    int surface_id = 0; // fixme
+
+    update   = g_new0(SimpleSpiceUpdate, 1);
+    drawable = &update->drawable;
+
+    bbox.left = x1;
+    bbox.top = y1;
+    bbox.right = x2;
+    bbox.bottom = y2;
+
+    drawable->surface_id = surface_id;
+
+    drawable->bbox            = bbox;
+    drawable->clip.type       = SPICE_CLIP_TYPE_NONE;
+    drawable->effect          = QXL_EFFECT_OPAQUE;
+    simple_set_release_info(&drawable->release_info, (intptr_t)update);
+    drawable->type            = QXL_DRAW_BLACKNESS;
+    drawable->surfaces_dest[0] = -1;
+    drawable->surfaces_dest[1] = -1;
+    drawable->surfaces_dest[2] = -1;
+
+    set_cmd(&update->ext, QXL_CMD_DRAW, (intptr_t)drawable);
+
+    push_command(test, &update->ext);
+}
+
 static void create_primary_surface(Test *test, uint32_t width,
                                    uint32_t height)
 {
@@ -269,30 +359,6 @@ static void get_init_info(QXLInstance *qin, QXLDevInitInfo *info)
     info->memslot_id_bits = 1;
     info->memslot_gen_bits = 1;
     info->n_surfaces = 1;
-}
-
-
-// We shall now have a ring of commands, so that we can update
-// it from a separate thread - since get_command is called from
-// the worker thread, and we need to sometimes do an update_area,
-// which cannot be done from red_worker context (not via dispatcher,
-// since you get a deadlock, and it isn't designed to be done
-// any other way, so no point testing that).
-
-
-static void push_command(Test *test, QXLCommandExt *ext)
-{
-    g_mutex_lock(test->command_mutex);
-
-    while (test->commands_end - test->commands_start >= COMMANDS_SIZE) {
-        g_cond_wait(test->command_cond, test->command_mutex);
-    }
-    g_assert(test->commands_end - test->commands_start < COMMANDS_SIZE);
-    test->commands[test->commands_end % COMMANDS_SIZE] = ext;
-    test->commands_end++;
-    g_mutex_unlock(test->command_mutex);
-
-    test->qxl_worker->wakeup(test->qxl_worker);
 }
 
 // called from spice_server thread (i.e. red_worker thread)
