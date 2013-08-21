@@ -45,6 +45,7 @@
 #include <spice/macros.h>
 #include <spice/qxl_dev.h>
 
+#include <gdk/gdkkeysyms.h>
 #include "test_display_base.h"
 
 /* define this for debugging */
@@ -1463,6 +1464,7 @@ static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
     vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
 
     return;
+
     printf("MYKEYCODE %x\n", frag);
 
     if (vt->ibuf_count < (IBUFSIZE - 32)) {
@@ -1474,23 +1476,142 @@ static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
     }
 }
 
-static void my_kbd_push_unicode(SpiceKbdInstance *sin, uint32_t uc)
+static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
 {
     vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
+    static int control = 0;
+    static int shift = 0;
+    char *esc = NULL;
 
-    printf("MYKEYVAL %x\n", uc);
+    //fprintf (stderr, "KEYEVENT:%d: %08x\n", flags, keySym);fflush (stderr);
+    if (flags & 1) {
+        fprintf(stderr, "KEYPRESS: %08x\n", keySym);fflush (stderr);
 
-    if (vt->ibuf_count < (IBUFSIZE - 32)) {
-        gchar buf[10];
-        gint len = g_unichar_to_utf8(uc, buf);
+        if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
+            shift = 1;
+        } if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
+            control = 1;
+        } else if (vt->ibuf_count < (IBUFSIZE - 32)) {
 
-        if (len > 0) {
-            int i;
-            for (i = 0; i < len; i++) {
-                vt->ibuf[vt->ibuf_count++] = buf[i];
+            if (control) {
+                if(keySym >= 'a' && keySym <= 'z')
+                    keySym -= 'a' -1;
+                else if (keySym >= 'A' && keySym <= 'Z')
+                    keySym -= 'A'-1;
+                else
+                    keySym=0xffff;
+            } else {
+                switch (keySym) {
+                case GDK_KEY_Escape:
+                    keySym=27; break;
+                case GDK_KEY_Return:
+                    keySym='\r'; break;
+                case GDK_KEY_BackSpace:
+                    keySym=8; break;
+                case GDK_KEY_Tab:
+                    keySym='\t'; break;
+                case GDK_KEY_Delete: /* kdch1 */
+                case GDK_KEY_KP_Delete:
+                    esc = "[3~";break;
+                case GDK_KEY_Home: /* khome */
+                case GDK_KEY_KP_Home:
+                    esc = "OH";break;
+                case GDK_KEY_End:
+                case GDK_KEY_KP_End: /* kend */
+                    esc = "OF";break;
+                case GDK_KEY_Insert: /* kich1 */
+                case GDK_KEY_KP_Insert:
+                    esc = "[2~";break;
+                case GDK_KEY_Up:
+                case GDK_KEY_KP_Up:  /* kcuu1 */
+                    esc = "OA";break;
+                case GDK_KEY_Down: /* kcud1 */
+                case GDK_KEY_KP_Down:
+                    esc = "OB";break;
+                case GDK_KEY_Right:
+                case GDK_KEY_KP_Right: /* kcuf1 */
+                    esc = "OC";break;
+                case GDK_KEY_Left:
+                case GDK_KEY_KP_Left: /* kcub1 */
+                    esc = "OD";break;
+                case GDK_KEY_Page_Up:
+                    if (shift) {
+                        vncterm_virtual_scroll (vt, -vt->height/2);
+                        return;
+                    }
+                    esc = "[5~";break;
+                case GDK_KEY_Page_Down:
+                    if (shift) {
+                        vncterm_virtual_scroll (vt, vt->height/2);
+                        return;
+                    }
+                    esc = "[6~";break;
+                case GDK_KEY_F1:
+                    esc = "OP";break;
+                case GDK_KEY_F2:
+                    esc = "OQ";break;
+                case GDK_KEY_F3:
+                    esc = "OR";break;
+                case GDK_KEY_F4:
+                    esc = "OS";break;
+                case GDK_KEY_F5:
+                    esc = "[15~";break;
+                case GDK_KEY_F6:
+                    esc = "[17~";break;
+                case GDK_KEY_F7:
+                    esc = "[18~";break;
+                case GDK_KEY_F8:
+                    esc = "[19~";break;
+                case GDK_KEY_F9:
+                    esc = "[20~";break;
+                case GDK_KEY_F10:
+                    esc = "[21~";break;
+                case GDK_KEY_F11:
+                    esc = "[23~";break;
+                case GDK_KEY_F12:
+                    esc = "[24~";break;
+                default:
+                    break;
+                }
             }
+
+#ifdef DEBUG
+            fprintf(stderr, "KEYPRESS OUT:%s: %d\n", esc, keySym); fflush (stderr);
+#endif
+
+            if (vt->y_displ != vt->y_base) {
+                vt->y_displ = vt->y_base;
+                vncterm_refresh (vt);
+            }
+            
+            if (esc) {
+                vncterm_respond_esc(vt, esc);
+            } else if(keySym < 0x100) {
+                if (vt->utf8) {
+                    gchar buf[10];
+                    gint len = g_unichar_to_utf8(keySym, buf);
+
+                    if (len > 0) {
+                        int i;
+                        for (i = 0; i < len; i++) {
+                            vt->ibuf[vt->ibuf_count++] = buf[i];
+                        }
+                    }
+                } else {
+                    vt->ibuf[vt->ibuf_count++] = (char)keySym;
+                }
+            }
+            vt->screen->core->watch_update_mask(vt->screen->mwatch, 
+                                                SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
+       }
+    }
+
+    if (flags & 2) { // UP
+        if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
+            shift = 0;
+        } else if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
+            control = 0;
         }
-        vt->screen->core->watch_update_mask(vt->screen->mwatch, SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
     }
 }
 
@@ -1504,7 +1625,7 @@ static SpiceKbdInterface my_keyboard_sif = {
     .base.description   = "spiceterm keyboard device",
     .base.major_version = SPICE_INTERFACE_KEYBOARD_MAJOR,
     .base.minor_version = SPICE_INTERFACE_KEYBOARD_MINOR,
-    .push_unicode       = my_kbd_push_unicode,
+    .push_keyval        = my_kbd_push_keyval,
     .push_scan_freg     = my_kbd_push_key,
     .get_leds           = my_kbd_get_leds,
 };

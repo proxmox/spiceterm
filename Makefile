@@ -10,7 +10,7 @@ test_display_no_ssl: ${SOURCES} ${HEADERS} test_display_no_ssl.c
 	gcc ${SOURCES} test_display_no_ssl.c -o $@ $(shell pkg-config --cflags --libs spice-protocol,spice-server)
 
 spiceterm: ${SOURCES} ${HEADERS} spiceterm.c 
-	gcc ${SOURCES} spiceterm.c -o $@ -lutil $(shell pkg-config --cflags --libs spice-protocol,spice-server)
+	gcc ${SOURCES} spiceterm.c -o $@ -lutil $(shell pkg-config --cflags gdk-3.0) $(shell pkg-config --cflags --libs spice-protocol,spice-server)
 
 .PHONY: test1
 test1: test_display_no_ssl
