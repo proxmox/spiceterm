@@ -1537,13 +1537,13 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
                 case GDK_KEY_Page_Up:
                     if (shift) {
                         vncterm_virtual_scroll (vt, -vt->height/2);
-                        return;
+                        goto ret;
                     }
                     esc = "[5~";break;
                 case GDK_KEY_Page_Down:
                     if (shift) {
                         vncterm_virtual_scroll (vt, vt->height/2);
-                        return;
+                        goto ret;
                     }
                     esc = "[6~";break;
                 case GDK_KEY_F1:
@@ -1601,9 +1601,7 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
                     vt->ibuf[vt->ibuf_count++] = (char)keySym;
                 }
             }
-            vt->screen->core->watch_update_mask(vt->screen->mwatch, 
-                                                SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
-       }
+        }
     }
 
     if (flags & 2) { // UP
@@ -1613,6 +1611,10 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
             control = 0;
         }
     }
+
+ret:
+    vt->screen->core->watch_update_mask(vt->screen->mwatch, 
+                                        SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
 }
 
 static uint8_t my_kbd_get_leds(SpiceKbdInstance *sin)
