@@ -40,6 +40,7 @@
 #include "spiceterm.h"
 #include "glyphs.h"
 
+#include <glib.h>
 #include <spice.h>
 #include <spice/enums.h>
 #include <spice/macros.h>
@@ -1759,6 +1760,8 @@ main (int argc, char** argv)
   struct timeval tv, tv1;
   time_t elapsed, cur_time;
   struct winsize dimensions;
+
+  g_thread_init(NULL);
 
   for (i = 1; i < argc; i++) {
     if (!strcmp (argv[i], "-c")) {

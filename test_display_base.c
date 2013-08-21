@@ -278,40 +278,46 @@ static void get_init_info(QXLInstance *qin, QXLDevInitInfo *info)
 // which cannot be done from red_worker context (not via dispatcher,
 // since you get a deadlock, and it isn't designed to be done
 // any other way, so no point testing that).
-int commands_end = 0;
-int commands_start = 0;
-struct QXLCommandExt* commands[1024];
 
-#define COMMANDS_SIZE COUNT(commands)
 
-static void push_command(QXLCommandExt *ext)
+static void push_command(Test *test, QXLCommandExt *ext)
 {
-    g_assert(commands_end - commands_start < COMMANDS_SIZE);
-    commands[commands_end % COMMANDS_SIZE] = ext;
-    commands_end++;
-}
+    g_mutex_lock(test->command_mutex);
 
-static struct QXLCommandExt *get_simple_command(void)
-{
-    struct QXLCommandExt *ret = commands[commands_start % COMMANDS_SIZE];
-    g_assert(commands_start < commands_end);
-    commands_start++;
-    return ret;
-}
+    while (test->commands_end - test->commands_start >= COMMANDS_SIZE) {
+        g_cond_wait(test->command_cond, test->command_mutex);
+    }
+    g_assert(test->commands_end - test->commands_start < COMMANDS_SIZE);
+    test->commands[test->commands_end % COMMANDS_SIZE] = ext;
+    test->commands_end++;
+    g_mutex_unlock(test->command_mutex);
 
-static int get_num_commands(void)
-{
-    return commands_end - commands_start;
+    test->qxl_worker->wakeup(test->qxl_worker);
 }
 
 // called from spice_server thread (i.e. red_worker thread)
 static int get_command(QXLInstance *qin, struct QXLCommandExt *ext)
 {
-    if (get_num_commands() == 0) {
-        return FALSE;
+    Test *test = SPICE_CONTAINEROF(qin, Test, qxl_instance);
+    int res = FALSE;
+
+    g_mutex_lock(test->command_mutex);
+    
+    if ((test->commands_end - test->commands_start) == 0) {
+        res = FALSE;
+        goto ret;
     }
-    *ext = *get_simple_command();
-    return TRUE;
+
+    *ext = *test->commands[test->commands_start % COMMANDS_SIZE];
+    g_assert(test->commands_start < test->commands_end);
+    test->commands_start++;
+    g_cond_signal(test->command_cond);
+
+    res = TRUE;
+
+ret:
+    g_mutex_unlock(test->command_mutex);
+    return res;
 }
 
 static int req_cmd_notification(QXLInstance *qin)
@@ -593,9 +599,7 @@ void test_draw_update_char(Test *test, int x, int y, int c, TextAttributes attri
 
     SimpleSpiceUpdate *update;
     update = test_draw_char(test, x, y, c, fg, bg);
-    push_command(&update->ext);
-
-    test->qxl_worker->wakeup(test->qxl_worker);
+    push_command(test, &update->ext);
 }
 
 static uint8_t kbd_get_leds(SpiceKbdInstance *sin)
@@ -622,6 +626,9 @@ Test *test_new(SpiceCoreInterface *core)
     int port = 5912;
     Test *test = g_new0(Test, 1);
     SpiceServer* server = spice_server_new();
+
+    test->command_cond = g_cond_new();
+    test->command_mutex = g_mutex_new();
 
     test->on_client_connected = client_connected,
     test->on_client_disconnected = client_disconnected,

@@ -86,6 +86,8 @@ struct Command {
     };
 };
 
+#define COMMANDS_SIZE 1024
+
 #define MAX_HEIGHT 2048
 #define MAX_WIDTH 2048
 
@@ -118,6 +120,13 @@ struct Test {
     int height;
 
     int target_surface;
+
+    GCond* command_cond;
+    GMutex* command_mutex;
+
+    int commands_end;
+    int commands_start;
+    struct QXLCommandExt* commands[COMMANDS_SIZE];
 
     // callbacks
     void (*on_client_connected)(Test *test);
