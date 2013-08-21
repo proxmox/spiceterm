@@ -22,6 +22,15 @@
 #define NOTIFY_DISPLAY_BATCH (SINGLE_PART/2)
 #define NOTIFY_CURSOR_BATCH 10
 
+/* these colours are from linux kernel drivers/char/vt.c */
+/* the default colour table, for VGA+ colour systems */
+int default_red[] = {0x00,0xaa,0x00,0xaa,0x00,0xaa,0x00,0xaa,
+    0x55,0xff,0x55,0xff,0x55,0xff,0x55,0xff};
+int default_grn[] = {0x00,0x00,0xaa,0x55,0x00,0x00,0xaa,0xaa,
+    0x55,0x55,0xff,0xff,0x55,0x55,0xff,0xff};
+int default_blu[] = {0x00,0x00,0x00,0x00,0xaa,0xaa,0xaa,0xaa,
+    0x55,0x55,0x55,0x55,0xff,0xff,0xff,0xff};
+
 /* Parts cribbed from spice-display.h/.c/qxl.c */
 
 typedef struct SimpleSpiceUpdate {
@@ -125,7 +134,7 @@ SimpleSpiceUpdate *test_spice_create_update_from_bitmap(uint32_t surface_id,
     return update;
 }
 
-static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c)
+static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c, int fg, int bg)
 {
     int top, left;
     uint8_t *dst;
@@ -149,12 +158,15 @@ static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c)
     unsigned char *data = vt_font_data + c*16;
     unsigned char d = *data;
 
-    unsigned char fgc_red = 255;
-    unsigned char fgc_blue = 255;
-    unsigned char fgc_green = 255;
-    unsigned char bgc_red = 0;
-    unsigned char bgc_blue = 0;
-    unsigned char bgc_green = 0;
+    g_assert(fg >= 0 && fg < 16);
+    g_assert(bg >= 0 && bg < 16);
+
+    unsigned char fgc_red = default_red[fg];
+    unsigned char fgc_blue = default_blu[fg];
+    unsigned char fgc_green = default_grn[fg];
+    unsigned char bgc_red = default_red[bg];
+    unsigned char bgc_blue = default_blu[bg];
+    unsigned char bgc_green = default_grn[bg];
 
     for (j = 0; j < 16; j++) {
         for (i = 0; i < 8; i++) {
@@ -555,13 +567,6 @@ static void kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 
     printf("KEYCODE %u %p\n", frag, test);
 
-    SimpleSpiceUpdate *update;
-    update = test_draw_char(test, my_posx, 10, my_charcode);
-    my_posx++;
-    my_charcode++;
-    push_command(&update->ext);
-
-    test->qxl_worker->wakeup(test->qxl_worker);
 }
 
 void test_draw_update_char(Test *test, int x, int y, int c, TextAttributes attrib)
@@ -587,7 +592,7 @@ void test_draw_update_char(Test *test, int x, int y, int c, TextAttributes attri
     //}
 
     SimpleSpiceUpdate *update;
-    update = test_draw_char(test, x, y, c);
+    update = test_draw_char(test, x, y, c, fg, bg);
     push_command(&update->ext);
 
     test->qxl_worker->wakeup(test->qxl_worker);
