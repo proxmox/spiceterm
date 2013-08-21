@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -110,8 +110,8 @@ ucs2_to_utf8 (unicode c, char *out)
 static void
 draw_char_at (vncTerm *vt, int x, int y, unicode ch, TextAttributes attrib)
 {
-    if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) { 
-        return; 
+    if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) {
+        return;
     }
 
 
@@ -1141,7 +1141,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
       break;
     case 7:  /* alert aka. bell */
         // fixme:
-        //rfbSendBell(vt->screen); 
+        //rfbSendBell(vt->screen);
       break;
     case 8:  /* backspace */
       if (vt->cx > 0)
@@ -1272,6 +1272,7 @@ vncterm_puts (vncTerm *vt, const char *buf, int len)
     }
 
     vncterm_show_cursor (vt, 1);
+
     return len;
 }
 
@@ -1475,7 +1476,7 @@ static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 
         char keySym = 'A'; // fixme;
         vt->ibuf[vt->ibuf_count++] = keySym;
-        
+
         vt->screen->core->watch_update_mask(vt->screen->mwatch, SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
     }
 }
@@ -1529,10 +1530,10 @@ create_vncterm (int argc, char** argv, int maxx, int maxy)
   test_add_agent_interface(test->server);
 
   vncTerm *vt = (vncTerm *)calloc (sizeof(vncTerm), 1);
- 
+
   vt->keyboard_sin.base.sif = &my_keyboard_sif.base;
   spice_server_add_interface(test->server, &vt->keyboard_sin.base);
- 
+
   /*
   rfbColourMap *cmap =&screen->colourMap;
   cmap->data.bytes = malloc (16*3);
@@ -1623,7 +1624,7 @@ static void master_watch(int master, int event, void *opaque)
         if (vt->ibuf_count > 0) {
             printf ("DEBUG: WRITE %x %d\n", vt->ibuf[0], vt->ibuf_count);
             write (master, vt->ibuf, vt->ibuf_count);
-            vt->ibuf_count = 0; // fixme: what if not all data written          
+            vt->ibuf_count = 0; // fixme: what if not all data written
         }
         vt->screen->core->watch_update_mask(vt->screen->mwatch, SPICE_WATCH_EVENT_READ);
     }
@@ -1669,7 +1670,7 @@ main (int argc, char** argv)
 
   setenv ("TERM", TERM, 1);
 
-  printf("EXEC: %s\n", command);  
+  printf("EXEC: %s\n", command);
 
   pid = forkpty (&master, ptyname, NULL, &dimensions);
   if(!pid) {
@@ -1693,7 +1694,7 @@ main (int argc, char** argv)
 
 
   vt->screen->mwatch = vt->screen->core->watch_add(
-      master, SPICE_WATCH_EVENT_READ /* |SPICE_WATCH_EVENT_WRITE */, 
+      master, SPICE_WATCH_EVENT_READ /* |SPICE_WATCH_EVENT_WRITE */,
       master_watch, vt);
 
   basic_event_loop_mainloop();
