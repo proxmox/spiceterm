@@ -1446,17 +1446,9 @@ static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
     vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
 
+    /* we no not need this */
+
     return;
-
-    printf("MYKEYCODE %x\n", frag);
-
-    if (vt->ibuf_count < (IBUFSIZE - 32)) {
-
-        char keySym = 'A'; // fixme;
-        vt->ibuf[vt->ibuf_count++] = keySym;
-
-        vt->screen->core->watch_update_mask(vt->screen->mwatch, SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
-    }
 }
 
 static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
@@ -1466,10 +1458,10 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
     static int shift = 0;
     char *esc = NULL;
 
-    //fprintf (stderr, "KEYEVENT:%d: %08x\n", flags, keySym);fflush (stderr);
-    if (flags & 1) {
-        fprintf(stderr, "KEYPRESS: %08x\n", keySym);fflush (stderr);
+    guint uc = 0;
 
+    fprintf (stderr, "KEYEVENT:%d: %08x\n", flags, keySym);fflush (stderr);
+    if (flags & 1) {
         if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
             shift = 1;
         } if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
@@ -1478,21 +1470,25 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
 
             if (control) {
                 if(keySym >= 'a' && keySym <= 'z')
-                    keySym -= 'a' -1;
+                    uc = keySym - 'a' + 1;
                 else if (keySym >= 'A' && keySym <= 'Z')
-                    keySym -= 'A'-1;
+                    uc = keySym - 'A' + 1;
                 else
-                    keySym=0xffff;
+                    uc = 0;
+
+                
+                //printf("CONTROL: %08x %d\n", keySym, uc);
+
             } else {
                 switch (keySym) {
                 case GDK_KEY_Escape:
-                    keySym=27; break;
+                    uc = 27; break;
                 case GDK_KEY_Return:
-                    keySym='\r'; break;
+                    uc = '\r'; break;
                 case GDK_KEY_BackSpace:
-                    keySym=8; break;
+                    uc = 8; break;
                 case GDK_KEY_Tab:
-                    keySym='\t'; break;
+                    uc = '\t'; break;
                 case GDK_KEY_Delete: /* kdch1 */
                 case GDK_KEY_KP_Delete:
                     esc = "[3~";break;
@@ -1554,12 +1550,15 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
                 case GDK_KEY_F12:
                     esc = "[24~";break;
                 default:
+                    if (keySym < 0x100) {
+                        uc = keySym;
+                    }
                     break;
                 }
             }
 
 #ifdef DEBUG
-            fprintf(stderr, "KEYPRESS OUT:%s: %d\n", esc, keySym); fflush (stderr);
+            fprintf(stderr, "KEYPRESS OUT:%s: %08x\n", esc, uc); fflush (stderr);
 #endif
 
             if (vt->y_displ != vt->y_base) {
@@ -1569,10 +1568,10 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
             
             if (esc) {
                 vncterm_respond_esc(vt, esc);
-            } else if(keySym < 0x100) {
+            } else if (uc > 0) {
                 if (vt->utf8) {
                     gchar buf[10];
-                    gint len = g_unichar_to_utf8(keySym, buf);
+                    gint len = g_unichar_to_utf8(uc, buf);
 
                     if (len > 0) {
                         int i;
@@ -1581,13 +1580,18 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
                         }
                     }
                 } else {
-                    vt->ibuf[vt->ibuf_count++] = (char)keySym;
+                    vt->ibuf[vt->ibuf_count++] = (char)uc;
                 }
             }
         }
     }
 
+
+ret:
+
     if (flags & 2) { // UP
+        //printf("KEYRELEASE %08x\n", keySym);
+
         if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
             shift = 0;
         } else if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
@@ -1595,7 +1599,6 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
         }
     }
 
-ret:
     vt->screen->core->watch_update_mask(vt->screen->mwatch, 
                                         SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
 }
