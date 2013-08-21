@@ -137,7 +137,7 @@ static SimpleSpiceUpdate *test_draw_char(Test *test, int x, int y, int c)
     left = x*8;
     top = y*16;
 
-    printf("DRAWCHAR %d %d %d\n", left, top, c);
+    // printf("DRAWCHAR %d %d %d\n", left, top, c);
  
     unique++;
 

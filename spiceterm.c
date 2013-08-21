@@ -1468,6 +1468,7 @@ static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
     vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
 
+    return;
     printf("MYKEYCODE %x\n", frag);
 
     if (vt->ibuf_count < (IBUFSIZE - 32)) {
@@ -1475,6 +1476,26 @@ static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
         char keySym = 'A'; // fixme;
         vt->ibuf[vt->ibuf_count++] = keySym;
         
+        vt->screen->core->watch_update_mask(vt->screen->mwatch, SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
+    }
+}
+
+static void my_kbd_push_unicode(SpiceKbdInstance *sin, uint32_t uc)
+{
+    vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
+
+    printf("MYKEYVAL %x\n", uc);
+
+    if (vt->ibuf_count < (IBUFSIZE - 32)) {
+        gchar buf[10];
+        gint len = g_unichar_to_utf8(uc, buf);
+
+        if (len > 0) {
+            int i;
+            for (i = 0; i < len; i++) {
+                vt->ibuf[vt->ibuf_count++] = buf[i];
+            }
+        }
         vt->screen->core->watch_update_mask(vt->screen->mwatch, SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
     }
 }
@@ -1489,6 +1510,7 @@ static SpiceKbdInterface my_keyboard_sif = {
     .base.description   = "spiceterm keyboard device",
     .base.major_version = SPICE_INTERFACE_KEYBOARD_MAJOR,
     .base.minor_version = SPICE_INTERFACE_KEYBOARD_MINOR,
+    .push_unicode       = my_kbd_push_unicode,
     .push_scan_freg     = my_kbd_push_key,
     .get_leds           = my_kbd_get_leds,
 };
@@ -1599,7 +1621,7 @@ static void master_watch(int master, int event, void *opaque)
         vncterm_puts (vt, buffer, c);
     } else {
         if (vt->ibuf_count > 0) {
-            printf ("DEBUG: WRITE %d %d\n", vt->ibuf[0], vt->ibuf_count);
+            printf ("DEBUG: WRITE %x %d\n", vt->ibuf[0], vt->ibuf_count);
             write (master, vt->ibuf, vt->ibuf_count);
             vt->ibuf_count = 0; // fixme: what if not all data written          
         }
