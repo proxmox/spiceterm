@@ -22,6 +22,8 @@
 
 */
 
+#define _GNU_SOURCE  
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -38,7 +40,7 @@
 #include <locale.h>
 
 #include "spiceterm.h"
-#include "glyphs.h"
+//#include "glyphs.h"
 
 #include <glib.h>
 #include <spice.h>
@@ -64,8 +66,6 @@
 
 /* these colours are from linux kernel drivers/char/vt.c */
 
-static int idle_timeout = 1;
-
 unsigned char color_table[] = { 0, 4, 2, 6, 1, 5, 3, 7,
 				8,12,10,14, 9,13,11,15 };
 
@@ -78,6 +78,7 @@ print_usage (const char *msg)
 }
 
 /* Convert UCS2 to UTF8 sequence, trailing zero */
+/*
 static int
 ucs2_to_utf8 (unicode c, char *out)
 {
@@ -100,7 +101,7 @@ ucs2_to_utf8 (unicode c, char *out)
 
   return 0;
 }
-
+*/
 
 static void
 draw_char_at (vncTerm *vt, int x, int y, unicode ch, TextAttributes attrib)
@@ -109,10 +110,7 @@ draw_char_at (vncTerm *vt, int x, int y, unicode ch, TextAttributes attrib)
         return;
     }
 
-
-    int ec = vt_fontmap[ch];
-
-    test_draw_update_char(vt->screen, x, y, ec, attrib);
+    test_draw_update_char(vt->screen, x, y, ch, attrib);
 }
 
 static void
@@ -1269,6 +1267,7 @@ vncterm_set_xcut_text (char* str, int len, struct _rfbClientRec* cl)
   vt->selection_len = len;
 }
 */
+/*
 static void
 mouse_report (vncTerm *vt, int butt, int mrx, int mry)
 {
@@ -1279,14 +1278,15 @@ mouse_report (vncTerm *vt, int butt, int mrx, int mry)
 
   vncterm_respond_esc (vt, buf);
 }
+*/
 
 void
 vncterm_toggle_marked_cell (vncTerm *vt, int pos)
 {
-  int x= (pos%vt->width)*8;
-  int y= (pos/vt->width)*16;
 
 /* fixme:
+  int x= (pos%vt->width)*8;
+  int y= (pos/vt->width)*16;
 
   int i,j;
   rfbScreenInfoPtr s=vt->screen;
@@ -1437,14 +1437,9 @@ vncterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
 }
 */
 
-static int client_count = 0;
-static int client_connected = 0;
-static int last_client = 1;
-static time_t last_time = 0;
-
 static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
-    vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
+    // vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
 
     /* we no not need this */
 
@@ -1741,9 +1736,6 @@ main (int argc, char** argv)
   int pid;
   int master;
   char ptyname[1024];
-  fd_set fs, fs1;
-  struct timeval tv, tv1;
-  time_t elapsed, cur_time;
   struct winsize dimensions;
 
   g_thread_init(NULL);
@@ -1757,6 +1749,8 @@ main (int argc, char** argv)
       break;
     }
   }
+
+  if (0) print_usage(NULL); // fixme:
 
   vncTerm *vt = create_vncterm (argc, argv, 745, 400);
 

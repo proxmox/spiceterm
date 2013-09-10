@@ -56,11 +56,11 @@ static void test_spice_destroy_update(SimpleSpiceUpdate *update)
 #define DEFAULT_WIDTH 640
 #define DEFAULT_HEIGHT 320
 
-#define SINGLE_PART 4
-static const int angle_parts = 64 / SINGLE_PART;
+//#define SINGLE_PART 4
+//static const int angle_parts = 64 / SINGLE_PART;
 static int unique = 1;
-static int color = -1;
-static int c_i = 0;
+//static int color = -1;
+//static int c_i = 0;
 
 __attribute__((noreturn))
 static void sigchld_handler(int signal_num) // wait for the child process and exit
@@ -388,9 +388,9 @@ ret:
 
 static int req_cmd_notification(QXLInstance *qin)
 {
-    Test *test = SPICE_CONTAINEROF(qin, Test, qxl_instance);
-
+    //Test *test = SPICE_CONTAINEROF(qin, Test, qxl_instance);
     //test->core->timer_start(test->wakeup_timer, test->wakeup_ms);
+
     return TRUE;
 }
 
@@ -450,7 +450,6 @@ static void cursor_init()
 static int get_cursor_command(QXLInstance *qin, struct QXLCommandExt *ext)
 {
     Test *test = SPICE_CONTAINEROF(qin, Test, qxl_instance);
-    static int color = 0;
     static int set = 1;
     static int x = 0, y = 0;
     QXLCursorCmd *cursor_cmd;
@@ -553,7 +552,7 @@ static void client_disconnected(Test *test)
 
 static void do_conn_timeout(void *opaque)
 {
-    Test *test = opaque;
+    // Test *test = opaque;
 
     if (client_count <= 0) {
         printf("do_conn_timeout\n");
@@ -631,8 +630,6 @@ void test_add_agent_interface(SpiceServer *server)
     spice_server_add_interface(server, &vdagent_sin.base);
 }
 
-static int my_charcode = 65;
-static int my_posx = 0;
 static void kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
     Test *test = SPICE_CONTAINEROF(sin, Test, keyboard_sin);
@@ -641,7 +638,7 @@ static void kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 
 }
 
-void test_draw_update_char(Test *test, int x, int y, int c, TextAttributes attrib)
+void test_draw_update_char(Test *test, int x, int y, gunichar ch, TextAttributes attrib)
 {
     int fg, bg;
 
@@ -662,6 +659,8 @@ void test_draw_update_char(Test *test, int x, int y, int c, TextAttributes attri
     //if (attrib.uline) {
     //rfbDrawLine (vt->screen, rx, ry + 14, rxe, ry + 14, fg);
     //}
+
+    int c = vt_fontmap[ch];
 
     SimpleSpiceUpdate *update;
     update = test_draw_char(test, x, y, c, fg, bg);
@@ -718,7 +717,6 @@ Test *test_new(SpiceCoreInterface *core)
     }
 
     cursor_init();
-    test->has_secondary = 0;
 
     int timeout = 10; // max time to wait for client connection
     test->conn_timeout_timer = core->timer_add(do_conn_timeout, test);

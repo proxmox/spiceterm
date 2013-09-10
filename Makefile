@@ -7,7 +7,7 @@ SOURCES=test_display_base.c basic_event_loop.c
 all: ${PROGRAMS}
 
 spiceterm: ${SOURCES} ${HEADERS} spiceterm.c 
-	gcc ${SOURCES} spiceterm.c -o $@ -lutil $(shell pkg-config --cflags gdk-3.0) $(shell pkg-config --cflags --libs gthread-2.0,spice-protocol,spice-server)
+	gcc -Werror -Wall -Wtype-limits  ${SOURCES} spiceterm.c -o $@ -lutil $(shell pkg-config --cflags gdk-3.0) $(shell pkg-config --cflags --libs gthread-2.0,spice-protocol,spice-server)
 
 .PHONY: test
 test: spiceterm

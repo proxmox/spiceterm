@@ -1,6 +1,6 @@
-static int vt_font_size = 850;
+int vt_font_size = 850;
 
-static unsigned char vt_font_data[] = {
+unsigned char vt_font_data[] = {
 	/* 0 0x00 */
 	0x00, /* 00000000 */
 	0x00, /* 00000000 */
@@ -15303,7 +15303,7 @@ static unsigned char vt_font_data[] = {
 
 };
 
-static unsigned short vt_fontmap[65536] = {
+unsigned short vt_fontmap[65536] = {
 	/* 0x0000 => */ 0,
 	/* 0x0001 => */ 0,
 	/* 0x0002 => */ 0,
