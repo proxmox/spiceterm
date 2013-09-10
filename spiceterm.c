@@ -51,6 +51,8 @@
 #include <gdk/gdkkeysyms.h>
 #include "test_display_base.h"
 
+#include "basic_event_loop.h"
+
 /* define this for debugging */
 //#define DEBUG
 

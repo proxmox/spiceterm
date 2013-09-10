@@ -4,9 +4,6 @@
 #include <glib.h>
 #include <spice.h>
 
-#include "basic_event_loop.h"
-
-
 typedef struct TextAttributes {
   unsigned int fgcol:4;
   unsigned int bgcol:4;
