@@ -1,7 +1,7 @@
 
 PROGRAMS=test_display_no_ssl spiceterm
 
-HEADERS=test_display_base.h basic_event_loop.h ring.h glyphs.h spiceterm.h
+HEADERS=test_display_base.h basic_event_loop.h glyphs.h spiceterm.h
 SOURCES=test_display_base.c basic_event_loop.c
 
 all: ${PROGRAMS}
