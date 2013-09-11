@@ -37,8 +37,6 @@ struct SpiceScreen {
     QXLInstance qxl_instance;
     QXLWorker *qxl_worker;
 
-    SpiceKbdInstance keyboard_sin;
-
     uint8_t primary_surface[MAX_HEIGHT * MAX_WIDTH * 4];
     int primary_height;
     int primary_width;
@@ -51,8 +49,6 @@ struct SpiceScreen {
     // Current mode (set by create_primary)
     int width;
     int height;
-
-    int target_surface;
 
     GCond* command_cond;
     GMutex* command_mutex;
