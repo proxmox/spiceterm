@@ -40,7 +40,6 @@
 #include <locale.h>
 
 #include "spiceterm.h"
-//#include "glyphs.h"
 
 #include <glib.h>
 #include <spice.h>
@@ -49,9 +48,9 @@
 #include <spice/qxl_dev.h>
 
 #include <gdk/gdkkeysyms.h>
-#include "test_display_base.h"
 
 #include "basic_event_loop.h"
+#include "translations.h"
 
 /* define this for debugging */
 //#define DEBUG

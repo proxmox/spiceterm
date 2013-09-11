@@ -9,13 +9,14 @@
 #include <sys/types.h>
 #include <getopt.h>
 
-#include "glyphs.h"
 #include <spice.h>
 #include <spice/enums.h>
 #include <spice/macros.h>
 #include <spice/qxl_dev.h>
 
-#include "test_display_base.h"
+#include "glyphs.h"
+
+#include "spiceterm.h"
 
 #define MEM_SLOT_GROUP_ID 0
 
@@ -723,39 +724,4 @@ Test *test_new(SpiceCoreInterface *core)
     test->core->timer_start(test->conn_timeout_timer, timeout*1000);
 
     return test;
-}
-
-
-__attribute__((noreturn))
-void usage(const char *argv0, const int exitcode)
-{
-
-    printf("usage: %s\n", argv0);
-    exit(exitcode);
-}
-
-void spice_test_config_parse_args(int argc, char **argv)
-{
-    struct option options[] = {
-//        {"automated-tests", no_argument, &has_automated_tests, 1},
-        {NULL, 0, NULL, 0},
-    };
-    int option_index;
-    int val;
-
-    while ((val = getopt_long(argc, argv, "", options, &option_index)) != -1) {
-        switch (val) {
-        case '?':
-            printf("unrecognized option '%s'\n", argv[optind - 1]);
-            usage(argv[0], EXIT_FAILURE);
-        case 0:
-            break;
-        }
-    }
-
-    if (argc > optind) {
-        printf("unknown argument '%s'\n", argv[optind]);
-        usage(argv[0], EXIT_FAILURE);
-    }
-    return;
 }
