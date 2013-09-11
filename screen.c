@@ -672,7 +672,7 @@ spice_screen_add_agent_interface(SpiceServer *server)
 }
 
 void 
-spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar ch, TextAttributes attrib)
+spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib)
 {
     int fg, bg;
 

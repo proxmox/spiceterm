@@ -89,7 +89,7 @@ print_usage (const char *msg)
 /* Convert UCS2 to UTF8 sequence, trailing zero */
 /*
 static int
-ucs2_to_utf8 (unicode c, char *out)
+ucs2_to_utf8 (gunichar2 c, char *out)
 {
   if (c < 0x80) {
     out[0] = c;			//  0*******
@@ -113,7 +113,7 @@ ucs2_to_utf8 (unicode c, char *out)
 */
 
 static void
-draw_char_at (spiceTerm *vt, int x, int y, unicode ch, TextAttributes attrib)
+draw_char_at (spiceTerm *vt, int x, int y, gunichar2 ch, TextAttributes attrib)
 {
     if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) {
         return;
@@ -617,7 +617,7 @@ enum { ESnormal, ESesc, ESsquare, ESgetpars, ESgotpars, ESfunckey,
        ESpalette, ESidquery, ESosc1, ESosc2};
 
 static void
-spiceterm_putchar (spiceTerm *vt, unicode ch)
+spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
 {
   int x, y, i, c;
 
@@ -1179,7 +1179,7 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
 static int
 spiceterm_puts (spiceTerm *vt, const char *buf, int len)
 {
-    unicode tc;
+    gunichar2 tc;
 
     spiceterm_show_cursor (vt, 0);
 
@@ -1257,7 +1257,7 @@ spiceterm_set_xcut_text (char* str, int len, struct _rfbClientRec* cl)
 
   // seems str is Latin-1 encoded
   if (vt->selection) free (vt->selection);
-  vt->selection = (unicode *)malloc (len*sizeof (unicode));
+  vt->selection = (gunichar2 *)malloc (len*sizeof (gunichar2));
   int i;
   for (i = 0; i < len; i++) {
     vt->selection[i] = str[i] & 0xff;
@@ -1407,7 +1407,7 @@ spiceterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
     int len = sel_end_pos - sel_start_pos + 1;
 
     if (vt->selection) free (vt->selection);
-    vt->selection = (unicode *)malloc (len*sizeof (unicode));
+    vt->selection = (gunichar2 *)malloc (len*sizeof (gunichar2));
     vt->selection_len = len;
     char *sel_latin1 = (char *)malloc (len + 1);
 

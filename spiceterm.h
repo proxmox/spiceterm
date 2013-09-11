@@ -7,7 +7,7 @@
 #define IBUFSIZE 1024
 #define MAX_ESC_PARAMS 16
 
-typedef unsigned short unicode; // fixme
+//typedef unsigned short unicode; // fixme
 
 typedef struct TextAttributes {
   unsigned int fgcol:4;
@@ -20,7 +20,7 @@ typedef struct TextAttributes {
 } TextAttributes;
 
 typedef struct TextCell {
-  unicode ch;
+  gunichar2 ch;
   TextAttributes attrib;
 } TextCell;
 
@@ -70,7 +70,7 @@ SpiceScreen* spice_screen_new(SpiceCoreInterface* core);
 
 void spice_screen_add_display_interface(SpiceScreen *spice_screen);
 void spice_screen_add_agent_interface(SpiceServer *server);
-void spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar ch, TextAttributes attrib);
+void spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib);
 void spice_screen_scroll(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2, int src_x, int src_y);
 void spice_screen_clear(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2);
 
@@ -134,7 +134,7 @@ typedef struct spiceTerm {
   char ibuf[IBUFSIZE];
   int ibuf_count;
 
-  unicode *selection;
+  gunichar2 *selection;
   int selection_len;
 
   unsigned int mark_active:1;
