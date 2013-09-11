@@ -33,7 +33,7 @@
 #include <spice/macros.h>
 #include "event_loop.h"
 
-int debug = 1;
+static int debug = 0;
     
 #define DPRINTF(x, format, ...) { \
     if (x <= debug) { \
@@ -158,7 +158,7 @@ static SpiceWatch *watch_add(int fd, int event_mask, SpiceWatchFunc func, void *
 {
     SpiceWatch *watch = g_new0(SpiceWatch, 1);
 
-    DPRINTF(0, "adding %p, fd=%d", watch, fd);
+    DPRINTF(1, "adding %p, fd=%d", watch, fd);
 
     watch->fd = fd;
     watch->event_mask = event_mask;
@@ -179,7 +179,7 @@ static void watch_update_mask(SpiceWatch *watch, int event_mask)
 {
     g_assert(watch != NULL);
 
-    DPRINTF(0, "fd %d to %d", watch->fd, event_mask);
+    DPRINTF(1, "fd %d to %d", watch->fd, event_mask);
  
     watch->event_mask = event_mask;
 
@@ -193,7 +193,7 @@ static void watch_remove(SpiceWatch *watch)
 {
     g_assert(watch != NULL);
 
-    DPRINTF(0, "remove %p (fd %d)", watch, watch->fd);
+    DPRINTF(1, "remove %p (fd %d)", watch, watch->fd);
 
     g_source_remove(watch->evid);
     g_io_channel_unref(watch->channel);
@@ -203,7 +203,7 @@ static void watch_remove(SpiceWatch *watch)
 
 static void channel_event(int event, SpiceChannelEventInfo *info)
 {
-    DPRINTF(0, "channel event con, type, id, event: %d, %d, %d, %d",
+    DPRINTF(1, "channel event con, type, id, event: %d, %d, %d, %d",
             info->connection_id, info->type, info->id, event);
 }
 

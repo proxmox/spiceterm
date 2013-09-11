@@ -55,16 +55,21 @@
 #include "event_loop.h"
 #include "translations.h"
 
-/* define this for debugging */
-//#define DEBUG
+static int debug = 0;
+    
+#define DPRINTF(x, format, ...) { \
+    if (x <= debug) { \
+        printf("%s: " format "\n" , __FUNCTION__, ## __VA_ARGS__); \
+    } \
+}
 
 #define TERM "xterm"
 
 #define TERMIDCODE "[?1;2c" // vt100 ID
 
 #define CHECK_ARGC(argc,argv,i) if (i >= argc-1) { \
-   fprintf (stderr, "ERROR: not enough arguments for: %s\n", argv[i]); \
-   print_usage (NULL); \
+   fprintf(stderr, "ERROR: not enough arguments for: %s\n", argv[i]); \
+   print_usage(NULL); \
    exit(1); \
 }
 
@@ -77,8 +82,8 @@ unsigned char color_table[] = { 0, 4, 2, 6, 1, 5, 3, 7,
 static void
 print_usage (const char *msg)
 {
-  if (msg) { fprintf (stderr, "ERROR: %s\n", msg); }
-  fprintf (stderr, "USAGE: spiceterm [spiceopts] [-c command [args]]\n");
+  if (msg) { fprintf(stderr, "ERROR: %s\n", msg); }
+  fprintf(stderr, "USAGE: spiceterm [spiceopts] [-c command [args]]\n");
 }
 
 /* Convert UCS2 to UTF8 sequence, trailing zero */
@@ -470,7 +475,7 @@ spiceterm_csi_m (spiceTerm *vt)
       vt->cur_attrib.bgcol = vt->default_attrib.bgcol;
       break;
     default:
-      fprintf (stderr, "unhandled ESC[%d m code\n",vt->esc_buf[i]);
+      fprintf(stderr, "unhandled ESC[%d m code\n",vt->esc_buf[i]);
       //fixme: implement
      }
   }
@@ -616,10 +621,10 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
 {
   int x, y, i, c;
 
-#ifdef DEBUG
-  if (!vt->tty_state)
-  fprintf (stderr, "CHAR:%2d: %4x '%c' (cur_enc %d) %d %d\n", vt->tty_state, ch, ch, vt->cur_enc, vt->cx, vt->cy);
-#endif
+  if (!vt->tty_state) {
+      DPRINTF(1, "%s: CHAR:%2d: %4x '%c' (cur_enc %d) %d %d", __func__,
+              vt->tty_state, ch, ch, vt->cur_enc, vt->cx, vt->cy);
+  }
 
   switch(vt->tty_state) {
   case ESesc:
@@ -661,9 +666,7 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
       /* appl. keypad - ignored */
       break;
     default:
-#ifdef DEBUG
-      fprintf(stderr, "got unhandled ESC%c  %d\n", ch, ch);
-#endif
+      DPRINTF(1, "%s: got unhandled ESC%c  %d", __func__, ch, ch);
       break;
     }
     break;
@@ -691,9 +694,7 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
       vt->tty_state = ESosc1;
       break;
     default:
-#ifdef DEBUG
-      fprintf (stderr, "unhandled OSC %c\n", ch);
-#endif
+      DPRINTF(1, "%s: got unhandled OSC %c", __func__, ch);
       vt->tty_state = ESnormal;
       break;
     }
@@ -703,9 +704,7 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
     if (ch == ';') {
       vt->tty_state = ESosc2;
     } else {
-#ifdef DEBUG
-      fprintf (stderr, "got illegal OSC sequence\n");
-#endif
+      DPRINTF(1, "%s: got illegal OSC sequence", __func__);
     }
     break;
   case ESosc2:
@@ -715,9 +714,7 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
       vt->osc_textbuf[i++] = ch;
       vt->osc_textbuf[i] = 0;
     } else {
-#ifdef DEBUG
-      fprintf (stderr, "OSC:%c:%s\n", vt->osc_cmd, vt->osc_textbuf);
-#endif
+      DPRINTF(1, "%s: OSC:%c:%s", __func__, vt->osc_cmd, vt->osc_textbuf);
       vt->tty_state = ESnormal;
     }
     break;
@@ -782,21 +779,22 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
 
     vt->tty_state = ESnormal;
 
-#ifdef DEBUG
     char *qes = vt->esc_ques ? "?" : "";
-    if (vt->esc_count == 0) {
-      fprintf(stderr, "ESC[%s%c\n", qes, ch);
-    } else if (vt->esc_count == 1) {
-      fprintf(stderr, "ESC[%s%d%c\n", qes, vt->esc_buf[0], ch);
-    } else {
-      int i;
-      fprintf(stderr, "ESC[%s%d", qes, vt->esc_buf[0]);
-      for (i = 1; i < vt->esc_count; i++) {
-	fprintf(stderr, ";%d",  vt->esc_buf[i]);
-      }
-      fprintf (stderr, "%c\n", ch);
+    
+    if (debug) {
+        if (vt->esc_count == 0) {
+            DPRINTF(1, "%s: ESC[%s%c", __func__, qes, ch);
+        } else if (vt->esc_count == 1) {
+            DPRINTF(1, "%s: ESC[%s%d%c\n", __func__, qes, vt->esc_buf[0], ch);
+        } else {
+            int i;
+            printf("ESC[%s%d", qes, vt->esc_buf[0]);
+            for (i = 1; i < vt->esc_count; i++) {
+                printf(";%d",  vt->esc_buf[i]);
+            }
+            printf("%c\n", ch);
+        }
     }
-#endif
 
     switch (ch) {
     case 'h':
@@ -1033,27 +1031,25 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
 	vt->region_bottom = vt->esc_buf[1];
 	vt->cx = 0;
 	vt->cy = vt->region_top;
-#ifdef DEBUG
-	fprintf (stderr, "set region %d %d\n", vt->region_top, vt->region_bottom);
-#endif
+	DPRINTF(1, "%s: set region %d %d", __func__, vt->region_top, vt->region_bottom);
       }
 
       break;
     default:
-#ifdef DEBUG
-      if (vt->esc_count == 0) {
-	fprintf(stderr, "unhandled escape ESC[%s%c\n", qes, ch);
-      } else if (vt->esc_count == 1) {
-	fprintf(stderr, "unhandled escape ESC[%s%d%c\n", qes, vt->esc_buf[0], ch);
-      } else {
-	int i;
-	fprintf(stderr, "unhandled escape ESC[%s%d", qes, vt->esc_buf[0]);
-	for (i = 1; i < vt->esc_count; i++) {
-	  fprintf(stderr, ";%d",  vt->esc_buf[i]);
-	}
-	fprintf (stderr, "%c\n", ch);
+      if (debug) {
+          if (vt->esc_count == 0) {
+              DPRINTF(1, "%s: unhandled escape ESC[%s%c", __func__,  qes, ch);
+          } else if (vt->esc_count == 1) {
+              DPRINTF(1, "%s: unhandled escape ESC[%s%d%c\n", __func__, qes, vt->esc_buf[0], ch);
+          } else {
+              int i;
+              printf("unhandled escape ESC[%s%d", qes, vt->esc_buf[0]);
+              for (i = 1; i < vt->esc_count; i++) {
+                  printf(";%d",  vt->esc_buf[i]);
+              }
+              printf("%c\n", ch);
+          }
       }
-#endif
       break;
     }
     vt->esc_ques = 0;
@@ -1094,9 +1090,7 @@ spiceterm_putchar (spiceTerm *vt, unicode ch)
     vt->tty_state = ESnormal;
 
     if (ch == 'c') {
-#ifdef DEBUG
-      fprintf (stderr, "ESC[>c   Query term ID\n");
-#endif
+      DPRINTF(1, "%s: ESC[>c   Query term ID", __func__);
       spiceterm_respond_esc (vt, TERMIDCODE);
     }
     break;
@@ -1459,7 +1453,8 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
 
     guint uc = 0;
 
-    fprintf (stderr, "KEYEVENT:%d: %08x\n", flags, keySym);fflush (stderr);
+    DPRINTF(1, "%s: flags=%d keySym=%08x", __func__,  flags, keySym);
+
     if (flags & 1) {
         if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
             shift = 1;
@@ -1474,9 +1469,6 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
                     uc = keySym - 'A' + 1;
                 else
                     uc = 0;
-
-                
-                //printf("CONTROL: %08x %d\n", keySym, uc);
 
             } else {
                 switch (keySym) {
@@ -1556,9 +1548,7 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
                 }
             }
 
-#ifdef DEBUG
-            fprintf(stderr, "KEYPRESS OUT:%s: %08x\n", esc, uc); fflush (stderr);
-#endif
+            DPRINTF(1, "%s: escape=%s unicode=%08x\n", __func__, esc, uc);
 
             if (vt->y_displ != vt->y_base) {
                 vt->y_displ = vt->y_base;
@@ -1589,8 +1579,6 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
 ret:
 
     if (flags & 2) { // UP
-        //printf("KEYRELEASE %08x\n", keySym);
-
         if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
             shift = 0;
         } else if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
@@ -1688,8 +1676,6 @@ static void master_watch(int master, int event, void *opaque)
 {
     spiceTerm *vt = (spiceTerm *)opaque;
 
-    printf("CHANNEL EVENT %d\n", event);
-
     // fixme: if (!vt->mark_active) {
 
     if (event == SPICE_WATCH_EVENT_READ) {
@@ -1704,7 +1690,7 @@ static void master_watch(int master, int event, void *opaque)
         spiceterm_puts (vt, buffer, c);
     } else {
         if (vt->ibuf_count > 0) {
-            printf ("DEBUG: WRITE %x %d\n", vt->ibuf[0], vt->ibuf_count);
+            DPRINTF(1, "%s: write input %x %d", __func__, vt->ibuf[0], vt->ibuf_count);
             write (master, vt->ibuf, vt->ibuf_count);
             vt->ibuf_count = 0; // fixme: what if not all data written
         }
@@ -1753,7 +1739,7 @@ main (int argc, char** argv)
 
   setenv ("TERM", TERM, 1);
 
-  printf("EXEC: %s\n", command);
+  DPRINTF(1, "%s: execute %s", __func__, command);
 
   pid = forkpty (&master, ptyname, NULL, &dimensions);
   if(!pid) {
