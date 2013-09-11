@@ -76,7 +76,7 @@ static void
 print_usage (const char *msg)
 {
   if (msg) { fprintf (stderr, "ERROR: %s\n", msg); }
-  fprintf (stderr, "USAGE: vncterm [vncopts] [-c command [args]]\n");
+  fprintf (stderr, "USAGE: spiceterm [spiceopts] [-c command [args]]\n");
 }
 
 /* Convert UCS2 to UTF8 sequence, trailing zero */
@@ -106,7 +106,7 @@ ucs2_to_utf8 (unicode c, char *out)
 */
 
 static void
-draw_char_at (vncTerm *vt, int x, int y, unicode ch, TextAttributes attrib)
+draw_char_at (spiceTerm *vt, int x, int y, unicode ch, TextAttributes attrib)
 {
     if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) {
         return;
@@ -116,7 +116,7 @@ draw_char_at (vncTerm *vt, int x, int y, unicode ch, TextAttributes attrib)
 }
 
 static void
-vncterm_update_xy (vncTerm *vt, int x, int y)
+spiceterm_update_xy (spiceTerm *vt, int x, int y)
 {
   if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) { return; }
 
@@ -132,7 +132,7 @@ vncterm_update_xy (vncTerm *vt, int x, int y)
 }
 
 static void
-vncterm_clear_xy (vncTerm *vt, int x, int y)
+spiceterm_clear_xy (spiceTerm *vt, int x, int y)
 {
   if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) { return; }
 
@@ -153,7 +153,7 @@ vncterm_clear_xy (vncTerm *vt, int x, int y)
 }
 
 static void
-vncterm_show_cursor (vncTerm *vt, int show)
+spiceterm_show_cursor (spiceTerm *vt, int show)
 {
   int x = vt->cx;
   if (x >= vt->width) {
@@ -181,7 +181,7 @@ vncterm_show_cursor (vncTerm *vt, int show)
 }
 
 static void
-vncterm_refresh (vncTerm *vt)
+spiceterm_refresh (spiceTerm *vt)
 {
   int x, y, y1;
 
@@ -199,11 +199,11 @@ vncterm_refresh (vncTerm *vt)
   }
   //rfbMarkRectAsModified (vt->screen, 0, 0, vt->maxx, vt->maxy);
 
-  vncterm_show_cursor (vt, 1);
+  spiceterm_show_cursor (vt, 1);
 }
 
 static void
-vncterm_scroll_down (vncTerm *vt, int top, int bottom, int lines)
+spiceterm_scroll_down (spiceTerm *vt, int top, int bottom, int lines)
 {
     if ((top + lines) >= bottom) {
         lines = bottom - top -1;
@@ -241,7 +241,7 @@ vncterm_scroll_down (vncTerm *vt, int top, int bottom, int lines)
 }
 
 static void
-vncterm_scroll_up (vncTerm *vt, int top, int bottom, int lines, int moveattr)
+spiceterm_scroll_up (spiceTerm *vt, int top, int bottom, int lines, int moveattr)
 {
     if ((top + lines) >= bottom) {
         lines = bottom - top - 1;
@@ -286,7 +286,7 @@ vncterm_scroll_up (vncTerm *vt, int top, int bottom, int lines, int moveattr)
 }
 
 static void
-vncterm_virtual_scroll (vncTerm *vt, int lines)
+spiceterm_virtual_scroll (spiceTerm *vt, int lines)
 {
   if (vt->altbuf || lines == 0) return;
 
@@ -315,10 +315,10 @@ vncterm_virtual_scroll (vncTerm *vt, int lines)
 
   }
 
-  vncterm_refresh (vt);
+  spiceterm_refresh (vt);
 }
 static void
-vncterm_respond_esc (vncTerm *vt, const char *esc)
+spiceterm_respond_esc (spiceTerm *vt, const char *esc)
 {
   int len = strlen (esc);
   int i;
@@ -332,17 +332,17 @@ vncterm_respond_esc (vncTerm *vt, const char *esc)
 }
 
 static void
-vncterm_put_lf (vncTerm *vt)
+spiceterm_put_lf (spiceTerm *vt)
 {
   if (vt->cy + 1 == vt->region_bottom) {
 
     if (vt->altbuf || vt->region_top != 0 || vt->region_bottom != vt->height) {
-      vncterm_scroll_up (vt, vt->region_top, vt->region_bottom, 1, 1);
+      spiceterm_scroll_up (vt, vt->region_top, vt->region_bottom, 1, 1);
       return;
     }
 
     if (vt->y_displ == vt->y_base) {
-      vncterm_scroll_up (vt, vt->region_top, vt->region_bottom, 1, 0);
+      spiceterm_scroll_up (vt, vt->region_top, vt->region_bottom, 1, 0);
     }
 
     if (vt->y_displ == vt->y_base) {
@@ -377,7 +377,7 @@ vncterm_put_lf (vncTerm *vt)
 
 
 static void
-vncterm_csi_m (vncTerm *vt)
+spiceterm_csi_m (spiceTerm *vt)
 {
   int i;
 
@@ -475,7 +475,7 @@ vncterm_csi_m (vncTerm *vt)
 }
 
 static void
-vncterm_save_cursor (vncTerm *vt)
+spiceterm_save_cursor (spiceTerm *vt)
 {
   vt->cx_saved = vt->cx;
   vt->cy_saved = vt->cy;
@@ -487,7 +487,7 @@ vncterm_save_cursor (vncTerm *vt)
 }
 
 static void
-vncterm_restore_cursor (vncTerm *vt)
+spiceterm_restore_cursor (spiceTerm *vt)
 {
   vt->cx = vt->cx_saved;
   vt->cy = vt->cy_saved;
@@ -499,7 +499,7 @@ vncterm_restore_cursor (vncTerm *vt)
 }
 
 static void
-vncterm_set_alternate_buffer (vncTerm *vt, int on_off)
+spiceterm_set_alternate_buffer (spiceTerm *vt, int on_off)
 {
   int x, y;
 
@@ -513,7 +513,7 @@ vncterm_set_alternate_buffer (vncTerm *vt, int on_off)
 
     /* alternate buffer & cursor */
 
-    vncterm_save_cursor (vt);
+    spiceterm_save_cursor (vt);
     /* save screen to altcels */
     for (y = 0; y < vt->height; y++) {
       int y1 = (vt->y_base + y) % vt->total_height;
@@ -525,7 +525,7 @@ vncterm_set_alternate_buffer (vncTerm *vt, int on_off)
     /* clear screen */
     for (y = 0; y <= vt->height; y++) {
       for (x = 0; x < vt->width; x++) {
-	vncterm_clear_xy (vt, x, y);
+	spiceterm_clear_xy (vt, x, y);
       }
     }
 
@@ -543,14 +543,14 @@ vncterm_set_alternate_buffer (vncTerm *vt, int on_off)
       }
     }
 
-    vncterm_restore_cursor (vt);
+    spiceterm_restore_cursor (vt);
   }
 
-  vncterm_refresh (vt);
+  spiceterm_refresh (vt);
 }
 
 static void
-vncterm_set_mode (vncTerm *vt, int on_off)
+spiceterm_set_mode (spiceTerm *vt, int on_off)
 {
   int i;
 
@@ -562,7 +562,7 @@ vncterm_set_mode (vncTerm *vt, int on_off)
 	vt->report_mouse = on_off;
 	break;
       case 1049:	 	/* start/end special app mode (smcup/rmcup) */
-	vncterm_set_alternate_buffer (vt, on_off);
+	spiceterm_set_alternate_buffer (vt, on_off);
 	break;
       case 25:	 	        /* Cursor on/off */
       case 9:                   /* X10 mouse reporting on/off */
@@ -580,7 +580,7 @@ vncterm_set_mode (vncTerm *vt, int on_off)
 }
 
 static void
-vncterm_gotoxy (vncTerm *vt, int x, int y)
+spiceterm_gotoxy (spiceTerm *vt, int x, int y)
 {
   /* verify all boundaries */
 
@@ -610,7 +610,7 @@ enum { ESnormal, ESesc, ESsquare, ESgetpars, ESgotpars, ESfunckey,
        ESpalette, ESidquery, ESosc1, ESosc2};
 
 static void
-vncterm_putchar (vncTerm *vt, unicode ch)
+spiceterm_putchar (spiceTerm *vt, unicode ch)
 {
   int x, y, i, c;
 
@@ -633,10 +633,10 @@ vncterm_putchar (vncTerm *vt, unicode ch)
       vt->tty_state = ESpercent;
       break;
     case '7':
-      vncterm_save_cursor (vt);
+      spiceterm_save_cursor (vt);
       break;
     case '8':
-      vncterm_restore_cursor (vt);
+      spiceterm_restore_cursor (vt);
       break;
     case '(':
       vt->tty_state = ESsetG0; // SET G0
@@ -647,7 +647,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
     case 'M':
       /* cursor up (ri) */
       if (vt->cy == vt->region_top)
-	vncterm_scroll_down (vt, vt->region_top, vt->region_bottom, 1);
+	spiceterm_scroll_down (vt, vt->region_top, vt->region_bottom, 1);
       else if (vt->cy > 0) {
 	vt->cy--;
       }
@@ -798,16 +798,16 @@ vncterm_putchar (vncTerm *vt, unicode ch)
 
     switch (ch) {
     case 'h':
-      vncterm_set_mode (vt, 1);
+      spiceterm_set_mode (vt, 1);
       break;
     case 'l':
-      vncterm_set_mode (vt, 0);
+      spiceterm_set_mode (vt, 0);
       break;
     case 'm':
       if (!vt->esc_count) {
 	vt->esc_count++; // default parameter 0
       }
-      vncterm_csi_m (vt);
+      spiceterm_csi_m (vt);
       break;
     case 'n':
       /* report cursor position */
@@ -858,16 +858,16 @@ vncterm_putchar (vncTerm *vt, unicode ch)
     case 'G':
     case '`':
       /* move cursor to column */
-      vncterm_gotoxy (vt, vt->esc_buf[0] - 1, vt->cy);
+      spiceterm_gotoxy (vt, vt->esc_buf[0] - 1, vt->cy);
       break;
     case 'd':
       /* move cursor to row */
-      vncterm_gotoxy (vt, vt->cx , vt->esc_buf[0] - 1);
+      spiceterm_gotoxy (vt, vt->cx , vt->esc_buf[0] - 1);
       break;
     case 'f':
     case 'H':
       /* move cursor to row, column */
-      vncterm_gotoxy (vt, vt->esc_buf[1] - 1,  vt->esc_buf[0] - 1);
+      spiceterm_gotoxy (vt, vt->esc_buf[1] - 1,  vt->esc_buf[0] - 1);
       break;
     case 'J':
       switch (vt->esc_buf[0]) {
@@ -878,7 +878,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
 	    if (y == vt->cy && x < vt->cx) {
 	      continue;
 	    }
-	    vncterm_clear_xy (vt, x, y);
+	    spiceterm_clear_xy (vt, x, y);
 	  }
 	}
 	break;
@@ -889,7 +889,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
 	    if (y == vt->cy && x > vt->cx) {
 	      break;
 	    }
-	    vncterm_clear_xy (vt, x, y);
+	    spiceterm_clear_xy (vt, x, y);
 	  }
 	}
 	break;
@@ -897,7 +897,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
 	/* clear entire screen */
 	for (y = 0; y <= vt->height; y++) {
 	  for (x = 0; x < vt->width; x++) {
-	    vncterm_clear_xy (vt, x, y);
+	    spiceterm_clear_xy (vt, x, y);
 	  }
 	}
 	break;
@@ -908,19 +908,19 @@ vncterm_putchar (vncTerm *vt, unicode ch)
       case 0:
 	/* clear to eol */
 	for(x = vt->cx; x < vt->width; x++) {
-	  vncterm_clear_xy (vt, x, vt->cy);
+	  spiceterm_clear_xy (vt, x, vt->cy);
 	}
 	break;
       case 1:
 	/* clear from beginning of line */
 	for (x = 0; x <= vt->cx; x++) {
-	  vncterm_clear_xy (vt, x, vt->cy);
+	  spiceterm_clear_xy (vt, x, vt->cy);
 	}
 	break;
       case 2:
 	/* clear entire line */
 	for(x = 0; x < vt->width; x++) {
-	  vncterm_clear_xy (vt, x, vt->cy);
+	  spiceterm_clear_xy (vt, x, vt->cy);
 	}
 	break;
       }
@@ -934,7 +934,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
       else if (!c)
 	c = 1;
 
-      vncterm_scroll_down (vt, vt->cy, vt->region_bottom, c);
+      spiceterm_scroll_down (vt, vt->cy, vt->region_bottom, c);
       break;
     case 'M':
       /* delete line */
@@ -945,19 +945,19 @@ vncterm_putchar (vncTerm *vt, unicode ch)
       else if (!c)
 	c = 1;
 
-      vncterm_scroll_up (vt, vt->cy, vt->region_bottom, c, 1);
+      spiceterm_scroll_up (vt, vt->cy, vt->region_bottom, c, 1);
       break;
     case 'T':
       /* scroll down */
       c = vt->esc_buf[0];
       if (!c) c = 1;
-      vncterm_scroll_down (vt, vt->region_top, vt->region_bottom, c);
+      spiceterm_scroll_down (vt, vt->region_top, vt->region_bottom, c);
       break;
     case 'S':
       /* scroll up */
       c = vt->esc_buf[0];
       if (!c) c = 1;
-      vncterm_scroll_up (vt, vt->region_top, vt->region_bottom, c, 1);
+      spiceterm_scroll_up (vt, vt->region_top, vt->region_bottom, c, 1);
       break;
     case 'P':
       /* delete c character */
@@ -973,19 +973,19 @@ vncterm_putchar (vncTerm *vt, unicode ch)
 	TextCell *dst = &vt->cells[y1 * vt->width + x];
 	TextCell *src = dst + c;
 	*dst = *src;
-	vncterm_update_xy (vt, x + c, vt->cy);
+	spiceterm_update_xy (vt, x + c, vt->cy);
 	src->ch = ' ';
 	src->attrib = vt->default_attrib;
-	vncterm_update_xy (vt, x, vt->cy);
+	spiceterm_update_xy (vt, x, vt->cy);
       }
       break;
     case 's':
       /* save cursor position */
-      vncterm_save_cursor (vt);
+      spiceterm_save_cursor (vt);
       break;
     case 'u':
       /* restore cursor position */
-      vncterm_restore_cursor (vt);
+      spiceterm_restore_cursor (vt);
       break;
     case 'X':
       /* erase c characters */
@@ -995,7 +995,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
       if (c > (vt->width - vt->cx)) c = vt->width - vt->cx;
 
       for(i = 0; i < c; i++) {
-	vncterm_clear_xy (vt, vt->cx + i, vt->cy);
+	spiceterm_clear_xy (vt, vt->cx + i, vt->cy);
       }
       break;
     case '@':
@@ -1011,10 +1011,10 @@ vncterm_putchar (vncTerm *vt, unicode ch)
 	TextCell *src = &vt->cells[y1 * vt->width + x];
 	TextCell *dst = src + c;
 	*dst = *src;
-	vncterm_update_xy (vt, x + c, vt->cy);
+	spiceterm_update_xy (vt, x + c, vt->cy);
 	src->ch = ' ';
 	src->attrib = vt->cur_attrib;
-	vncterm_update_xy (vt, x, vt->cy);
+	spiceterm_update_xy (vt, x, vt->cy);
       }
 
       break;
@@ -1095,7 +1095,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
 #ifdef DEBUG
       fprintf (stderr, "ESC[>c   Query term ID\n");
 #endif
-      vncterm_respond_esc (vt, TERMIDCODE);
+      spiceterm_respond_esc (vt, TERMIDCODE);
     }
     break;
   case ESpercent:
@@ -1127,7 +1127,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
     case 9:  /* tabspace */
       if (vt->cx + (8 - (vt->cx % 8)) > vt->width) {
 	vt->cx = 0;
-	vncterm_put_lf (vt);
+	spiceterm_put_lf (vt);
       } else {
 	vt->cx = vt->cx + (8 - (vt->cx % 8));
       }
@@ -1135,7 +1135,7 @@ vncterm_putchar (vncTerm *vt, unicode ch)
     case 10:  /* LF,*/
     case 11:  /* VT */
     case 12:  /* FF */
-      vncterm_put_lf (vt);
+      spiceterm_put_lf (vt);
       break;
     case 13:  /* carriage return */
       vt->cx = 0;
@@ -1165,14 +1165,14 @@ vncterm_putchar (vncTerm *vt, unicode ch)
       if (vt->cx >= vt->width) {
 	/* line wrap */
 	vt->cx = 0;
-	vncterm_put_lf (vt);
+	spiceterm_put_lf (vt);
       }
 
       int y1 = (vt->y_base + vt->cy) % vt->total_height;
       TextCell *c = &vt->cells[y1*vt->width + vt->cx];
       c->attrib = vt->cur_attrib;
       c->ch = ch;
-      vncterm_update_xy (vt, vt->cx, vt->cy);
+      spiceterm_update_xy (vt, vt->cx, vt->cy);
       vt->cx++;
       break;
     }
@@ -1181,11 +1181,11 @@ vncterm_putchar (vncTerm *vt, unicode ch)
 }
 
 static int
-vncterm_puts (vncTerm *vt, const char *buf, int len)
+spiceterm_puts (spiceTerm *vt, const char *buf, int len)
 {
     unicode tc;
 
-    vncterm_show_cursor (vt, 0);
+    spiceterm_show_cursor (vt, 0);
 
     while (len) {
       unsigned char c = *buf;
@@ -1245,19 +1245,19 @@ vncterm_puts (vncTerm *vt, const char *buf, int len)
 	}
       }
 
-      vncterm_putchar (vt, tc);
+      spiceterm_putchar (vt, tc);
     }
 
-    vncterm_show_cursor (vt, 1);
+    spiceterm_show_cursor (vt, 1);
 
     return len;
 }
 
 /* fixme:
 void
-vncterm_set_xcut_text (char* str, int len, struct _rfbClientRec* cl)
+spiceterm_set_xcut_text (char* str, int len, struct _rfbClientRec* cl)
 {
-  vncTerm *vt =(vncTerm *)cl->screen->screenData;
+  spiceTerm *vt =(spiceTerm *)cl->screen->screenData;
 
   // seems str is Latin-1 encoded
   if (vt->selection) free (vt->selection);
@@ -1271,19 +1271,19 @@ vncterm_set_xcut_text (char* str, int len, struct _rfbClientRec* cl)
 */
 /*
 static void
-mouse_report (vncTerm *vt, int butt, int mrx, int mry)
+mouse_report (spiceTerm *vt, int butt, int mrx, int mry)
 {
   char buf[8];
 
   sprintf (buf, "[M%c%c%c", (char)(' ' + butt), (char)('!' + mrx),
 	   (char)('!' + mry));
 
-  vncterm_respond_esc (vt, buf);
+  spiceterm_respond_esc (vt, buf);
 }
 */
 
 void
-vncterm_toggle_marked_cell (vncTerm *vt, int pos)
+spiceterm_toggle_marked_cell (spiceTerm *vt, int pos)
 {
 
 /* fixme:
@@ -1307,10 +1307,10 @@ vncterm_toggle_marked_cell (vncTerm *vt, int pos)
 /* fixme:
 
 void
-vncterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
+spiceterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
 {
 
-  vncTerm *vt =(vncTerm *)cl->screen->screenData;
+  spiceTerm *vt =(spiceTerm *)cl->screen->screenData;
   static int button2_released = 1;
   static int last_mask = 0;
   static int sel_start_pos = 0;
@@ -1355,7 +1355,7 @@ vncterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
       }
       if (vt->y_displ != vt->y_base) {
 	vt->y_displ = vt->y_base;
-	vncterm_refresh (vt);
+	spiceterm_refresh (vt);
       }
     }
     button2_released = 0;
@@ -1366,13 +1366,13 @@ vncterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
   if (buttonMask & 1) {
     int pos = cy*vt->width + cx;
 
-    // code borrowed from libvncserver (VNConsole.c)
+    // code borrowed from libspiceserver (SPICEonsole.c)
 
     if (!vt->mark_active) {
 
       vt->mark_active = 1;
       sel_start_pos = sel_end_pos = pos;
-      vncterm_toggle_marked_cell (vt, pos);
+      spiceterm_toggle_marked_cell (vt, pos);
 
     } else {
 
@@ -1391,7 +1391,7 @@ vncterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
 	}
 
 	while (cx <= cy) {
-	  vncterm_toggle_marked_cell (vt, cx);
+	  spiceterm_toggle_marked_cell (vt, cx);
 	  cx++;
 	}
 
@@ -1429,7 +1429,7 @@ vncterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
     free (sel_latin1);
 
     while (sel_start_pos <= sel_end_pos) {
-      vncterm_toggle_marked_cell (vt, sel_start_pos++);
+      spiceterm_toggle_marked_cell (vt, sel_start_pos++);
     }
 
   }
@@ -1441,7 +1441,7 @@ vncterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
 
 static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
-    // vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
+    // spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
 
     /* we no not need this */
 
@@ -1450,7 +1450,7 @@ static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 
 static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
 {
-    vncTerm *vt = SPICE_CONTAINEROF(sin, vncTerm, keyboard_sin);
+    spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
     static int control = 0;
     static int shift = 0;
     char *esc = NULL;
@@ -1512,13 +1512,13 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
                     esc = "OD";break;
                 case GDK_KEY_Page_Up:
                     if (shift) {
-                        vncterm_virtual_scroll (vt, -vt->height/2);
+                        spiceterm_virtual_scroll (vt, -vt->height/2);
                         goto ret;
                     }
                     esc = "[5~";break;
                 case GDK_KEY_Page_Down:
                     if (shift) {
-                        vncterm_virtual_scroll (vt, vt->height/2);
+                        spiceterm_virtual_scroll (vt, vt->height/2);
                         goto ret;
                     }
                     esc = "[6~";break;
@@ -1560,11 +1560,11 @@ static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags
 
             if (vt->y_displ != vt->y_base) {
                 vt->y_displ = vt->y_base;
-                vncterm_refresh (vt);
+                spiceterm_refresh (vt);
             }
             
             if (esc) {
-                vncterm_respond_esc(vt, esc);
+                spiceterm_respond_esc(vt, esc);
             } else if (uc > 0) {
                 if (vt->utf8) {
                     gchar buf[10];
@@ -1615,8 +1615,8 @@ static SpiceKbdInterface my_keyboard_sif = {
     .get_leds           = my_kbd_get_leds,
 };
 
-vncTerm *
-create_vncterm (int argc, char** argv, int maxx, int maxy)
+spiceTerm *
+create_spiceterm (int argc, char** argv, int maxx, int maxy)
 {
   int i;
 
@@ -1628,7 +1628,7 @@ create_vncterm (int argc, char** argv, int maxx, int maxy)
   test_add_display_interface(test);
   test_add_agent_interface(test->server);
 
-  vncTerm *vt = (vncTerm *)calloc (sizeof(vncTerm), 1);
+  spiceTerm *vt = (spiceTerm *)calloc (sizeof(spiceTerm), 1);
 
   vt->keyboard_sin.base.sif = &my_keyboard_sif.base;
   spice_server_add_interface(test->server, &vt->keyboard_sin.base);
@@ -1645,13 +1645,13 @@ create_vncterm (int argc, char** argv, int maxx, int maxy)
   cmap->is16 = FALSE;
   screen->serverFormat.trueColour = FALSE;
 
-  screen->kbdAddEvent = vncterm_kbd_event;
+  screen->kbdAddEvent = spiceterm_kbd_event;
 
-  screen->setXCutText = vncterm_set_xcut_text;
+  screen->setXCutText = spiceterm_set_xcut_text;
 
-  screen->ptrAddEvent = vncterm_pointer_event;
+  screen->ptrAddEvent = spiceterm_pointer_event;
 
-  screen->desktopName = "VNC Command Terminal";
+  screen->desktopName = "SPICE Command Terminal";
 
   screen->newClientHook = new_client;
 
@@ -1703,7 +1703,7 @@ create_vncterm (int argc, char** argv, int maxx, int maxy)
 
 static void master_watch(int master, int event, void *opaque)
 {
-    vncTerm *vt = (vncTerm *)opaque;
+    spiceTerm *vt = (spiceTerm *)opaque;
 
     printf("CHANNEL EVENT %d\n", event);
 
@@ -1718,7 +1718,7 @@ static void master_watch(int master, int event, void *opaque)
         if (c == -1) {
             g_error("got read error"); // fixme
         }
-        vncterm_puts (vt, buffer, c);
+        spiceterm_puts (vt, buffer, c);
     } else {
         if (vt->ibuf_count > 0) {
             printf ("DEBUG: WRITE %x %d\n", vt->ibuf[0], vt->ibuf_count);
@@ -1754,7 +1754,7 @@ main (int argc, char** argv)
 
   if (0) print_usage(NULL); // fixme:
 
-  vncTerm *vt = create_vncterm (argc, argv, 745, 400);
+  spiceTerm *vt = create_spiceterm (argc, argv, 745, 400);
 
   setlocale(LC_ALL, ""); // set from environment
 

@@ -10,7 +10,7 @@ typedef struct TextCell {
   TextAttributes attrib;
 } TextCell;
 
-typedef struct vncTerm {
+typedef struct spiceTerm {
   int maxx;
   int maxy;
 
@@ -73,7 +73,7 @@ typedef struct vncTerm {
 
   unsigned int report_mouse:1;
 
-} vncTerm;
+} spiceTerm;
 
 /* Unicode translations copied from kernel source consolemap.c */
 
