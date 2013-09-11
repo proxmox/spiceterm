@@ -1,8 +1,8 @@
 
 PROGRAMS=spiceterm
 
-HEADERS=translations.h basic_event_loop.h glyphs.h spiceterm.h
-SOURCES=test_display_base.c basic_event_loop.c spiceterm.c
+HEADERS=translations.h event_loop.h glyphs.h spiceterm.h
+SOURCES=screen.c event_loop.c spiceterm.c
 
 all: ${PROGRAMS}
 

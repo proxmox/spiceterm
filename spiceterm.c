@@ -49,7 +49,7 @@
 
 #include <gdk/gdkkeysyms.h>
 
-#include "basic_event_loop.h"
+#include "event_loop.h"
 #include "translations.h"
 
 /* define this for debugging */
@@ -111,7 +111,7 @@ draw_char_at (spiceTerm *vt, int x, int y, unicode ch, TextAttributes attrib)
         return;
     }
 
-    test_draw_update_char(vt->screen, x, y, ch, attrib);
+    spice_screen_draw_char(vt->screen, x, y, ch, attrib);
 }
 
 static void
@@ -235,8 +235,8 @@ spiceterm_scroll_down (spiceTerm *vt, int top, int bottom, int lines)
     int y1 = y0 + h;
     int y2 = bottom*16;
 
-    test_spice_scroll(vt->screen, 0, y1, vt->screen->primary_width, y2, 0, y0);
-    test_spice_clear(vt->screen, 0, y0, vt->screen->primary_width, y1);
+    spice_screen_scroll(vt->screen, 0, y1, vt->screen->primary_width, y2, 0, y0);
+    spice_screen_clear(vt->screen, 0, y0, vt->screen->primary_width, y1);
 }
 
 static void
@@ -256,8 +256,8 @@ spiceterm_scroll_up (spiceTerm *vt, int top, int bottom, int lines, int moveattr
     int y1 = (top + lines)*16;
     int y2 = bottom*16;
 
-    test_spice_scroll(vt->screen, 0, y0, vt->screen->primary_width, y2 -h, 0, y1);
-    test_spice_clear(vt->screen, 0, y2 -h, vt->screen->primary_width, y2);
+    spice_screen_scroll(vt->screen, 0, y0, vt->screen->primary_width, y2 -h, 0, y1);
+    spice_screen_clear(vt->screen, 0, y2 -h, vt->screen->primary_width, y2);
     
     if (!moveattr) {
         return;
@@ -1619,45 +1619,26 @@ create_spiceterm (int argc, char** argv, int maxx, int maxy)
 {
   int i;
 
-  Test *test;
+  SpiceScreen *spice_screen;
 
   SpiceCoreInterface *core = basic_event_loop_init();
-  test = test_new(core);
+  spice_screen = spice_screen_new(core);
   //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
-  test_add_display_interface(test);
-  test_add_agent_interface(test->server);
+  spice_screen_add_display_interface(spice_screen);
+  spice_screen_add_agent_interface(spice_screen->server);
 
   spiceTerm *vt = (spiceTerm *)calloc (sizeof(spiceTerm), 1);
 
   vt->keyboard_sin.base.sif = &my_keyboard_sif.base;
-  spice_server_add_interface(test->server, &vt->keyboard_sin.base);
+  spice_server_add_interface(spice_screen->server, &vt->keyboard_sin.base);
 
-  /*
-  rfbColourMap *cmap =&screen->colourMap;
-  cmap->data.bytes = malloc (16*3);
-  for(i=0;i<16;i++) {
-    cmap->data.bytes[i*3 + 0] = default_red[color_table[i]];
-    cmap->data.bytes[i*3 + 1] = default_grn[color_table[i]];
-    cmap->data.bytes[i*3 + 2] = default_blu[color_table[i]];
-  }
-  cmap->count = 16;
-  cmap->is16 = FALSE;
-  screen->serverFormat.trueColour = FALSE;
+  // screen->setXCutText = spiceterm_set_xcut_text;
+  // screen->ptrAddEvent = spiceterm_pointer_event;
+  // screen->newClientHook = new_client;
+  // screen->desktopName = "SPICE Command Terminal";
 
-  screen->kbdAddEvent = spiceterm_kbd_event;
-
-  screen->setXCutText = spiceterm_set_xcut_text;
-
-  screen->ptrAddEvent = spiceterm_pointer_event;
-
-  screen->desktopName = "SPICE Command Terminal";
-
-  screen->newClientHook = new_client;
-
-  */
-
-  vt->maxx = test->width;
-  vt->maxy = test->height;
+  vt->maxx = spice_screen->width;
+  vt->maxy = spice_screen->height;
 
   vt->width = vt->maxx / 8;
   vt->height = vt->maxy / 16;
@@ -1695,7 +1676,7 @@ create_spiceterm (int argc, char** argv, int maxx, int maxy)
 
   vt->altcells = (TextCell *)calloc (sizeof (TextCell), vt->width*vt->height);
 
-  vt->screen = test;
+  vt->screen = spice_screen;
 
   return vt;
 }

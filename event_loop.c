@@ -7,7 +7,7 @@
 #include <glib.h>
 
 #include <spice/macros.h>
-#include "basic_event_loop.h"
+#include "event_loop.h"
 
 int debug = 1;
     

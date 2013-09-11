@@ -28,9 +28,9 @@ typedef struct TextCell {
 #define MAX_HEIGHT 2048
 #define MAX_WIDTH 2048
 
-typedef struct Test Test;
+typedef struct SpiceScreen SpiceScreen;
 
-struct Test {
+struct SpiceScreen {
     SpiceCoreInterface *core;
     SpiceServer *server;
 
@@ -62,24 +62,21 @@ struct Test {
     struct QXLCommandExt* commands[COMMANDS_SIZE];
 
     // callbacks
-    void (*on_client_connected)(Test *test);
-    void (*on_client_disconnected)(Test *test);
+    void (*on_client_connected)(SpiceScreen *spice_screen);
+    void (*on_client_disconnected)(SpiceScreen *spice_screen);
 };
 
-void test_add_display_interface(Test *test);
-void test_add_agent_interface(SpiceServer *server); // TODO - Test *test
-void test_add_keyboard_interface(Test *test);
-Test* test_new(SpiceCoreInterface* core);
+SpiceScreen* spice_screen_new(SpiceCoreInterface* core);
 
-void test_draw_update_char(Test *test, int x, int y, gunichar ch, TextAttributes attrib);
-void test_spice_scroll(Test *test, int x1, int y1, int x2, int y2, int src_x, int src_y);
-void test_spice_clear(Test *test, int x1, int y1, int x2, int y2);
+void spice_screen_add_display_interface(SpiceScreen *spice_screen);
+void spice_screen_add_agent_interface(SpiceServer *server);
+void spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar ch, TextAttributes attrib);
+void spice_screen_scroll(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2, int src_x, int src_y);
+void spice_screen_clear(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2);
 
 
-uint32_t test_get_width(void);
-uint32_t test_get_height(void);
-
-void spice_test_config_parse_args(int argc, char **argv);
+uint32_t spice_screen_get_width(void);
+uint32_t spice_screen_get_height(void);
 
 typedef struct spiceTerm {
   int maxx;
@@ -104,7 +101,7 @@ typedef struct spiceTerm {
   TextCell *cells;
   TextCell *altcells;
 
-  Test *screen;
+  SpiceScreen *screen;
   SpiceKbdInstance keyboard_sin;
 
   // cursor
