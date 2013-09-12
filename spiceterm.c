@@ -1667,6 +1667,19 @@ create_spiceterm(int argc, char** argv, int maxx, int maxy)
     return vt;
 }
 
+static gboolean 
+master_error_callback(GIOChannel *channel, GIOCondition condition, 
+                      gpointer data)
+{
+    //spiceTerm *vt = (spiceTerm *)data;
+
+    DPRINTF(1, "condition %d", condition);
+
+    exit(0);
+
+    return FALSE;
+}
+
 static void 
 master_watch(int master, int event, void *opaque)
 {
@@ -1757,23 +1770,18 @@ main (int argc, char** argv)
         exit (-1);
     }
 
-
+    /* watch for errors - we need to use glib directly because spice
+     * does not have SPICE_WATCH_EVENT for this */
+    GIOChannel *channel = g_io_channel_unix_new(master);
+    g_io_channel_set_flags(channel, G_IO_FLAG_NONBLOCK, NULL);
+    g_io_channel_set_encoding(channel, NULL, NULL);
+    g_io_add_watch(channel, G_IO_ERR|G_IO_HUP, master_error_callback, vt);
+ 
     vt->screen->mwatch = vt->screen->core->watch_add(
         master, SPICE_WATCH_EVENT_READ /* |SPICE_WATCH_EVENT_WRITE */,
         master_watch, vt);
 
     basic_event_loop_mainloop();
-
-    //rfbProcessEvents (vt->screen, 40000); /* 40 ms */
-
-    /*
-      if (vt->ibuf_count > 0) {
-      printf ("DEBUG: WRITE %d %d\n", vt->ibuf[0], vt->ibuf_count);
-      write (master, vt->ibuf, vt->ibuf_count);
-      vt->ibuf_count = 0;
-      last_time = time (NULL);
-      }
-    */
 
     kill (pid, 9);
     int status;
