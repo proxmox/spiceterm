@@ -7,8 +7,6 @@
 #define IBUFSIZE 1024
 #define MAX_ESC_PARAMS 16
 
-//typedef unsigned short unicode; // fixme
-
 typedef struct TextAttributes {
   unsigned int fgcol:4;
   unsigned int bgcol:4;
