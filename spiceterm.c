@@ -608,6 +608,26 @@ spiceterm_gotoxy (spiceTerm *vt, int x, int y)
     vt->cy = y;
 }
 
+static void 
+debug_print_escape_buffer(spiceTerm *vt, const char *func, const char *prefix,
+                          const char *qes, gunichar2 ch)
+{
+    if (debug >=1 ) {
+        if (vt->esc_count == 0) {
+            printf("%s:%s ESC[%s%c\n", func, prefix, qes, ch);
+        } else if (vt->esc_count == 1) {
+            printf("%s:%s ESC[%s%d%c\n", func, prefix, qes, vt->esc_buf[0], ch);
+        } else {
+            int i;
+            printf("%s:%s ESC[%s%d", func, prefix, qes, vt->esc_buf[0]);
+            for (i = 1; i < vt->esc_count; i++) {
+                printf(";%d",  vt->esc_buf[i]);
+            }
+            printf("%c\n", ch);
+        }
+    }
+}
+
 enum { ESnormal, ESesc, ESsquare, ESgetpars, ESgotpars, ESfunckey,
        EShash, ESsetG0, ESsetG1, ESpercent, ESignore, ESnonstd,
        ESpalette, ESidquery, ESosc1, ESosc2};
@@ -618,7 +638,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
     int x, y, i, c;
 
     if (debug && !vt->tty_state) {
-        DPRINTF(1, "%s: CHAR:%2d: %4x '%c' (cur_enc %d) %d %d", __func__,
+        DPRINTF(1, "CHAR:%2d: %4x '%c' (cur_enc %d) %d %d",
                 vt->tty_state, ch, ch, vt->cur_enc, vt->cx, vt->cy);
     }
 
@@ -662,7 +682,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             /* appl. keypad - ignored */
             break;
         default:
-            DPRINTF(1, "%s: got unhandled ESC%c  %d", __func__, ch, ch);
+            DPRINTF(1, "got unhandled ESC%c  %d", ch, ch);
             break;
         }
         break;
@@ -690,7 +710,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             vt->tty_state = ESosc1;
             break;
         default:
-            DPRINTF(1, "%s: got unhandled OSC %c", __func__, ch);
+            DPRINTF(1, "got unhandled OSC %c", ch);
             vt->tty_state = ESnormal;
             break;
         }
@@ -700,7 +720,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         if (ch == ';') {
             vt->tty_state = ESosc2;
         } else {
-            DPRINTF(1, "%s: got illegal OSC sequence", __func__);
+            DPRINTF(1, "got illegal OSC sequence");
         }
         break;
     case ESosc2:
@@ -710,7 +730,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             vt->osc_textbuf[i++] = ch;
             vt->osc_textbuf[i] = 0;
         } else {
-            DPRINTF(1, "%s: OSC:%c:%s", __func__, vt->osc_cmd, vt->osc_textbuf);
+            DPRINTF(1, "OSC:%c:%s", vt->osc_cmd, vt->osc_textbuf);
             vt->tty_state = ESnormal;
         }
         break;
@@ -778,19 +798,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         char *qes = vt->esc_ques ? "?" : "";
 
         if (debug) {
-            //fixme:
-            if (vt->esc_count == 0) {
-                DPRINTF(1, "%s: ESC[%s%c", __func__, qes, ch);
-            } else if (vt->esc_count == 1) {
-                DPRINTF(1, "%s: ESC[%s%d%c\n", __func__, qes, vt->esc_buf[0], ch);
-            } else {
-                int i;
-                printf("ESC[%s%d", qes, vt->esc_buf[0]);
-                for (i = 1; i < vt->esc_count; i++) {
-                    printf(";%d",  vt->esc_buf[i]);
-                }
-                printf("%c\n", ch);
-            }
+            debug_print_escape_buffer(vt, __func__, "", qes, ch);
         }
 
         switch (ch) {
@@ -1028,25 +1036,13 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
                 vt->region_bottom = vt->esc_buf[1];
                 vt->cx = 0;
                 vt->cy = vt->region_top;
-                DPRINTF(1, "%s: set region %d %d", __func__, vt->region_top, vt->region_bottom);
+                DPRINTF(1, "set region %d %d", vt->region_top, vt->region_bottom);
             }
 
             break;
         default:
             if (debug) {
-                // fixme
-                if (vt->esc_count == 0) {
-                    DPRINTF(1, "%s: unhandled escape ESC[%s%c", __func__,  qes, ch);
-                } else if (vt->esc_count == 1) {
-                    DPRINTF(1, "%s: unhandled escape ESC[%s%d%c\n", __func__, qes, vt->esc_buf[0], ch);
-                } else {
-                    int i;
-                    printf("unhandled escape ESC[%s%d", qes, vt->esc_buf[0]);
-                    for (i = 1; i < vt->esc_count; i++) {
-                        printf(";%d",  vt->esc_buf[i]);
-                    }
-                    printf("%c\n", ch);
-                }
+                debug_print_escape_buffer(vt, __func__, " unhandled escape", qes, ch);
             }
             break;
         }
@@ -1088,7 +1084,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         vt->tty_state = ESnormal;
 
         if (ch == 'c') {
-            DPRINTF(1, "%s: ESC[>c   Query term ID", __func__);
+            DPRINTF(1, "ESC[>c   Query term ID");
             spiceterm_respond_esc (vt, TERMIDCODE);
         }
         break;
@@ -1453,7 +1449,7 @@ my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
 
     guint uc = 0;
 
-    DPRINTF(1, "%s: flags=%d keySym=%08x", __func__,  flags, keySym);
+    DPRINTF(1, "flags=%d keySym=%08x", flags, keySym);
 
     if (flags & 1) {
         if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
@@ -1548,7 +1544,7 @@ my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
                 }
             }
 
-            DPRINTF(1, "%s: escape=%s unicode=%08x\n", __func__, esc, uc);
+            DPRINTF(1, "escape=%s unicode=%08x\n", esc, uc);
 
             if (vt->y_displ != vt->y_base) {
                 vt->y_displ = vt->y_base;
@@ -1692,7 +1688,7 @@ master_watch(int master, int event, void *opaque)
         spiceterm_puts (vt, buffer, c);
     } else {
         if (vt->ibuf_count > 0) {
-            DPRINTF(1, "%s: write input %x %d", __func__, vt->ibuf[0], vt->ibuf_count);
+            DPRINTF(1, "write input %x %d", vt->ibuf[0], vt->ibuf_count);
             write (master, vt->ibuf, vt->ibuf_count);
             vt->ibuf_count = 0; // fixme: what if not all data written
         }
@@ -1741,7 +1737,7 @@ main (int argc, char** argv)
 
     setenv ("TERM", TERM, 1);
 
-    DPRINTF(1, "%s: execute %s", __func__, command);
+    DPRINTF(1, "execute %s", command);
 
     pid = forkpty (&master, ptyname, NULL, &dimensions);
     if(!pid) {

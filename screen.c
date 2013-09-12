@@ -558,7 +558,7 @@ set_client_capabilities(QXLInstance *qin, uint8_t client_present,
 {
     SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
 
-    DPRINTF(1, "%s: present %d caps %d", __func__, client_present, caps[0]);
+    DPRINTF(1, "present %d caps %d", client_present, caps[0]);
 
     if (spice_screen->on_client_connected && client_present) {
         spice_screen->on_client_connected(spice_screen);
@@ -575,7 +575,7 @@ client_connected(SpiceScreen *spice_screen)
 {
     client_count++;
 
-    DPRINTF(1, "%s: client_count = %d", __func__, client_count);
+    DPRINTF(1, "client_count = %d", client_count);
 }
 
 static void 
@@ -583,7 +583,7 @@ client_disconnected(SpiceScreen *spice_screen)
 {    
     if (client_count > 0) {
         client_count--;
-        DPRINTF(1, "%s: client_count = %d", __func__, client_count);
+        DPRINTF(1, "client_count = %d", client_count);
         exit(0); // fixme: cleanup?
     }
 }
