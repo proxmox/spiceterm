@@ -87,7 +87,6 @@ typedef struct spiceTerm {
   long utf_char;       // used by utf8 parser
   int utf_count;       // used by utf8 parser
 
-
   TextAttributes default_attrib;
 
   TextCell *cells;
@@ -95,6 +94,7 @@ typedef struct spiceTerm {
 
   SpiceScreen *screen;
   SpiceKbdInstance keyboard_sin;
+  SpiceCharDeviceInstance vdagent_sin;
 
   // cursor
   TextAttributes cur_attrib;

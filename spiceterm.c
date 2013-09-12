@@ -1429,6 +1429,12 @@ spiceterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
 }
 */
 
+static void
+spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
+{
+    DPRINTF(0, "mask=%08x x=%d y=%d", buttons, x ,y);
+}
+
 static void 
 my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
@@ -1593,13 +1599,65 @@ my_kbd_get_leds(SpiceKbdInstance *sin)
 }
 
 static SpiceKbdInterface my_keyboard_sif = {
-    .base.type          = SPICE_INTERFACE_KEYBOARD ,
+    .base.type          = SPICE_INTERFACE_KEYBOARD,
     .base.description   = "spiceterm keyboard device",
     .base.major_version = SPICE_INTERFACE_KEYBOARD_MAJOR,
     .base.minor_version = SPICE_INTERFACE_KEYBOARD_MINOR,
     .push_keyval        = my_kbd_push_keyval,
     .push_scan_freg     = my_kbd_push_key,
     .get_leds           = my_kbd_get_leds,
+};
+
+/* vdagent interface - to get mouse/clipboarde support */
+static int 
+vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
+{
+    spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, vdagent_sin);
+
+    VDIChunkHeader *hdr = (VDIChunkHeader *)buf;
+    VDAgentMessage *msg = (VDAgentMessage *)&hdr[1];
+
+    //g_assert(hdr->port == VDP_SERVER_PORT); 
+    g_assert(msg->protocol == VD_AGENT_PROTOCOL);
+
+    DPRINTF(1, "%d %d %d %d", len, hdr->port, msg->protocol, msg->type);
+
+    if (msg->type == VD_AGENT_MOUSE_STATE) {
+        VDAgentMouseState *info = (VDAgentMouseState *)&msg[1];
+        spiceterm_motion_event(vt, info->x, info->y, info->buttons);
+    } else if (msg->type == VD_AGENT_ANNOUNCE_CAPABILITIES) {
+        /* ignore for now */
+    } else if (msg->type == VD_AGENT_MONITORS_CONFIG) {
+        /* ignore for now */
+    } else {
+        DPRINTF(0, "got uknown vdagent message type %d\n", msg->type);
+    }
+
+    return len;
+}
+
+static int 
+vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
+{
+    DPRINTF(0, "%d", len);
+
+    return 0;
+}
+
+static void 
+vmc_state(SpiceCharDeviceInstance *sin, int connected)
+{
+
+}
+
+static SpiceCharDeviceInterface my_vdagent_sif = {
+    .base.type          = SPICE_INTERFACE_CHAR_DEVICE,
+    .base.description   = "spice virtual channel char device",
+    .base.major_version = SPICE_INTERFACE_CHAR_DEVICE_MAJOR,
+    .base.minor_version = SPICE_INTERFACE_CHAR_DEVICE_MINOR,
+    .state              = vmc_state,
+    .write              = vmc_write,
+    .read               = vmc_read,
 };
 
 static spiceTerm *
@@ -1617,6 +1675,10 @@ create_spiceterm(int argc, char** argv, int maxx, int maxy, guint timeout)
 
     vt->keyboard_sin.base.sif = &my_keyboard_sif.base;
     spice_server_add_interface(spice_screen->server, &vt->keyboard_sin.base);
+
+    vt->vdagent_sin.base.sif = &my_vdagent_sif.base;
+    vt->vdagent_sin.subtype = "vdagent";
+    spice_server_add_interface(spice_screen->server, &vt->vdagent_sin.base);
 
     // screen->setXCutText = spiceterm_set_xcut_text;
     // screen->ptrAddEvent = spiceterm_pointer_event;

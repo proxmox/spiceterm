@@ -39,6 +39,7 @@
 #include <spice/enums.h>
 #include <spice/macros.h>
 #include <spice/qxl_dev.h>
+#include <spice/vd_agent.h>
 
 #include "glyphs.h"
 
@@ -631,41 +632,6 @@ QXLInterface display_sif = {
     .set_client_capabilities = set_client_capabilities,
 };
 
-/* vdagent interface - not sure why we need that? */
-static int 
-vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
-{
-    return len;
-}
-
-static int 
-vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
-{
-    return 0;
-}
-
-static void 
-vmc_state(SpiceCharDeviceInstance *sin, int connected)
-{
-
-}
-
-static SpiceCharDeviceInterface vdagent_sif = {
-    .base.type          = SPICE_INTERFACE_CHAR_DEVICE,
-    .base.description   = "spice virtual channel char device",
-    .base.major_version = SPICE_INTERFACE_CHAR_DEVICE_MAJOR,
-    .base.minor_version = SPICE_INTERFACE_CHAR_DEVICE_MINOR,
-    .state              = vmc_state,
-    .write              = vmc_write,
-    .read               = vmc_read,
-};
-
-SpiceCharDeviceInstance vdagent_sin = {
-    .base = {
-        .sif = &vdagent_sif.base,
-    },
-    .subtype = "vdagent",
-};
 
 void 
 spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib)
@@ -730,8 +696,6 @@ spice_screen_new(SpiceCoreInterface *core, guint timeout)
     spice_screen->core->timer_start(spice_screen->conn_timeout_timer, timeout*1000);
 
     spice_server_add_interface(spice_screen->server, &spice_screen->qxl_instance.base);
-
-    spice_server_add_interface(server, &vdagent_sin.base);
 
     return spice_screen;
 }
