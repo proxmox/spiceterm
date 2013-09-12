@@ -1602,15 +1602,15 @@ static SpiceKbdInterface my_keyboard_sif = {
     .get_leds           = my_kbd_get_leds,
 };
 
-spiceTerm *
-create_spiceterm(int argc, char** argv, int maxx, int maxy)
+static spiceTerm *
+create_spiceterm(int argc, char** argv, int maxx, int maxy, guint timeout)
 {
     int i;
 
     SpiceScreen *spice_screen;
 
     SpiceCoreInterface *core = basic_event_loop_init();
-    spice_screen = spice_screen_new(core);
+    spice_screen = spice_screen_new(core, timeout);
     //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
 
     spiceTerm *vt = (spiceTerm *)calloc (sizeof(spiceTerm), 1);
@@ -1732,7 +1732,7 @@ main (int argc, char** argv)
 
     if (0) print_usage(NULL); // fixme:
 
-    spiceTerm *vt = create_spiceterm (argc, argv, 745, 400);
+    spiceTerm *vt = create_spiceterm (argc, argv, 745, 400, 10);
 
     setlocale(LC_ALL, ""); // set from environment
 

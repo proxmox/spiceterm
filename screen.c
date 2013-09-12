@@ -694,7 +694,7 @@ spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, Te
 }
 
 SpiceScreen *
-spice_screen_new(SpiceCoreInterface *core)
+spice_screen_new(SpiceCoreInterface *core, guint timeout)
 {
     int port = 5912;
     SpiceScreen *spice_screen = g_new0(SpiceScreen, 1);
@@ -726,7 +726,6 @@ spice_screen_new(SpiceCoreInterface *core)
 
     cursor_init();
 
-    int timeout = 10; // max time to wait for client connection
     spice_screen->conn_timeout_timer = core->timer_add(do_conn_timeout, spice_screen);
     spice_screen->core->timer_start(spice_screen->conn_timeout_timer, timeout*1000);
 
