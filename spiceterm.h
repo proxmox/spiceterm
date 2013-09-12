@@ -64,8 +64,6 @@ struct SpiceScreen {
 
 SpiceScreen* spice_screen_new(SpiceCoreInterface* core);
 
-void spice_screen_add_display_interface(SpiceScreen *spice_screen);
-void spice_screen_add_agent_interface(SpiceServer *server);
 void spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib);
 void spice_screen_scroll(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2, int src_x, int src_y);
 void spice_screen_clear(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2);

@@ -623,12 +623,6 @@ QXLInterface display_sif = {
     .set_client_capabilities = set_client_capabilities,
 };
 
-void 
-spice_screen_add_display_interface(SpiceScreen* spice_screen)
-{
-    spice_server_add_interface(spice_screen->server, &spice_screen->qxl_instance.base);
-}
-
 /* vdagent interface - not sure why we need that? */
 static int 
 vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
@@ -664,12 +658,6 @@ SpiceCharDeviceInstance vdagent_sin = {
     },
     .subtype = "vdagent",
 };
-
-void 
-spice_screen_add_agent_interface(SpiceServer *server)
-{
-    spice_server_add_interface(server, &vdagent_sin.base);
-}
 
 void 
 spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib)
@@ -738,6 +726,10 @@ spice_screen_new(SpiceCoreInterface *core)
     int timeout = 10; // max time to wait for client connection
     spice_screen->conn_timeout_timer = core->timer_add(do_conn_timeout, spice_screen);
     spice_screen->core->timer_start(spice_screen->conn_timeout_timer, timeout*1000);
+
+    spice_server_add_interface(spice_screen->server, &spice_screen->qxl_instance.base);
+
+    spice_server_add_interface(server, &vdagent_sin.base);
 
     return spice_screen;
 }

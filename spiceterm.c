@@ -1612,8 +1612,6 @@ create_spiceterm(int argc, char** argv, int maxx, int maxy)
     SpiceCoreInterface *core = basic_event_loop_init();
     spice_screen = spice_screen_new(core);
     //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
-    spice_screen_add_display_interface(spice_screen);
-    spice_screen_add_agent_interface(spice_screen->server);
 
     spiceTerm *vt = (spiceTerm *)calloc (sizeof(spiceTerm), 1);
 
