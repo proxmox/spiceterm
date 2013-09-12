@@ -535,9 +535,9 @@ spiceterm_set_alternate_buffer (spiceTerm *vt, int on_off)
                 spiceterm_clear_xy (vt, x, y);
             }
         }
-        
+
     } else {
-        
+
         if (vt->altbuf == 0) return;
 
         vt->altbuf = 0;
@@ -736,7 +736,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
                   cmap->data.bytes[i] += vt->esc_buf[j];
                 */
                 //set_palette(vc); ?
-                
+
                 vt->tty_state = ESnormal;
             }
         } else
@@ -750,7 +750,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         vt->esc_count = 0;
         vt->esc_has_par = 0;
         vt->tty_state = ESgetpars;
-        
+
         if (ch == '>') {
             vt->tty_state = ESidquery;
             break;
@@ -776,7 +776,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             vt->tty_state = ESgotpars;
         }
     case ESgotpars:
-        
+
         vt->tty_state = ESnormal;
 
         char *qes = vt->esc_ques ? "?" : "";
@@ -929,7 +929,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         case 'L':
             /* insert line */
             c = vt->esc_buf[0];
-            
+
             if (c > vt->height - vt->cy)
                 c = vt->height - vt->cy;
             else if (!c)
@@ -940,7 +940,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         case 'M':
             /* delete line */
             c = vt->esc_buf[0];
-            
+
             if (c > vt->height - vt->cy)
                 c = vt->height - vt->cy;
             else if (!c)
@@ -963,7 +963,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         case 'P':
             /* delete c character */
             c = vt->esc_buf[0];
-            
+
             if (c > vt->width - vt->cx)
                 c = vt->width - vt->cx;
             else if (!c)
@@ -992,7 +992,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             /* erase c characters */
             c = vt->esc_buf[0];
             if (!c) c = 1;
-            
+
             if (c > (vt->width - vt->cx)) c = vt->width - vt->cx;
 
             for(i = 0; i < c; i++) {
@@ -1006,7 +1006,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
                 c = vt->width - vt->cx;
             }
             if (!c) c = 1;
-            
+
             for (x = vt->width - c; x >= vt->cx; x--) {
                 int y1 = (vt->y_base + vt->cy) % vt->total_height;
                 TextCell *src = &vt->cells[y1 * vt->width + x];
@@ -1067,7 +1067,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             vt->g0enc = IBMPC_MAP;
         else if (ch == 'K')
             vt->g0enc = USER_MAP;
-        
+
         if (vt->charset == 0)
             vt->cur_enc = vt->g0enc;
 
@@ -1242,12 +1242,12 @@ spiceterm_puts (spiceTerm *vt, const char *buf, int len)
                 tc = c;
             }
         }
-        
+
         spiceterm_putchar (vt, tc);
     }
 
     spiceterm_show_cursor (vt, 1);
-    
+
     return len;
 }
 
@@ -1437,7 +1437,8 @@ spiceterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
 }
 */
 
-static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
+static void 
+my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
     // spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
 
@@ -1446,7 +1447,8 @@ static void my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
     return;
 }
 
-static void my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
+static void 
+my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
 {
     spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
     static int control = 0;
@@ -1592,7 +1594,8 @@ ret:
                                         SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
 }
 
-static uint8_t my_kbd_get_leds(SpiceKbdInstance *sin)
+static uint8_t 
+my_kbd_get_leds(SpiceKbdInstance *sin)
 {
     return 0;
 }
@@ -1608,7 +1611,7 @@ static SpiceKbdInterface my_keyboard_sif = {
 };
 
 spiceTerm *
-create_spiceterm (int argc, char** argv, int maxx, int maxy)
+create_spiceterm(int argc, char** argv, int maxx, int maxy)
 {
     int i;
 
@@ -1661,7 +1664,7 @@ create_spiceterm (int argc, char** argv, int maxx, int maxy)
     vt->cur_attrib = vt->default_attrib;
 
     vt->cells = (TextCell *)calloc (sizeof (TextCell), vt->width*vt->total_height);
-    
+
     for (i = 0; i < vt->width*vt->total_height; i++) {
         vt->cells[i].ch = ' ';
         vt->cells[i].attrib = vt->default_attrib;
@@ -1674,7 +1677,8 @@ create_spiceterm (int argc, char** argv, int maxx, int maxy)
     return vt;
 }
 
-static void master_watch(int master, int event, void *opaque)
+static void 
+master_watch(int master, int event, void *opaque)
 {
     spiceTerm *vt = (spiceTerm *)opaque;
 
