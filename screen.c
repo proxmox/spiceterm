@@ -92,7 +92,7 @@ spice_screen_destroy_update(SimpleSpiceUpdate *update)
 #define DEFAULT_WIDTH 640
 #define DEFAULT_HEIGHT 320
 
-static int unique = 1;
+static int unique = 0x0ffff + 1;
 
 static void 
 set_cmd(QXLCommandExt *ext, uint32_t type, QXLPHYSICAL data)
@@ -134,7 +134,7 @@ push_command(SpiceScreen *spice_screen, QXLCommandExt *ext)
 
 /* bitmap are freed, so they must be allocated with g_malloc */
 static SimpleSpiceUpdate *
-spice_screen_update_from_bitmap_cmd(uint32_t surface_id, QXLRect bbox, uint8_t *bitmap)
+spice_screen_update_from_bitmap_cmd(uint32_t surface_id, QXLRect bbox, uint8_t *bitmap, int cache_id)
 {
     SimpleSpiceUpdate *update;
     QXLDrawable *drawable;
@@ -165,7 +165,11 @@ spice_screen_update_from_bitmap_cmd(uint32_t surface_id, QXLRect bbox, uint8_t *
     drawable->u.copy.src_area.right  = bw;
     drawable->u.copy.src_area.bottom = bh;
 
-    QXL_SET_IMAGE_ID(image, QXL_IMAGE_GROUP_DEVICE, unique);
+    if (cache_id) {
+        QXL_SET_IMAGE_ID(image, QXL_IMAGE_GROUP_DEVICE, cache_id);
+    } else {
+        QXL_SET_IMAGE_ID(image, QXL_IMAGE_GROUP_DEVICE, ++unique);
+    }
     image->descriptor.type   = SPICE_IMAGE_TYPE_BITMAP;
     image->bitmap.flags      = QXL_BITMAP_DIRECT | QXL_BITMAP_TOP_DOWN;
     image->bitmap.stride     = bw * 4;
@@ -190,12 +194,15 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
     int bw, bh;
     int i, j;
     QXLRect bbox;
+    int cache_id = 0;
+
+    if (c < 256) {
+        cache_id = ((fg << 12) | (bg << 8) | (c & 255)) & 0x0ffff;
+    }
 
     left = x*8;
     top = y*16;
  
-    unique++;
-
     bw       = 8;
     bh       = 16;
 
@@ -239,7 +246,7 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
     bbox.left = left; bbox.top = top;
     bbox.right = left + bw; bbox.bottom = top + bh;
 
-    return spice_screen_update_from_bitmap_cmd(0, bbox, bitmap);
+    return spice_screen_update_from_bitmap_cmd(0, bbox, bitmap, cache_id);
 }
 
 void 
