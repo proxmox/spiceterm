@@ -192,9 +192,6 @@ spiceterm_refresh (spiceTerm *vt)
 {
     int x, y, y1;
 
-    // fixme?
-    // rfbFillRect (vt->screen, 0, 0, vt->maxx, vt->maxy, vt->default_attrib.bgcol);
-
     y1 = vt->y_displ;
     for(y = 0; y < vt->height; y++) {
         TextCell *c = vt->cells + y1 * vt->width;
@@ -205,7 +202,6 @@ spiceterm_refresh (spiceTerm *vt)
         if (++y1 == vt->total_height)
             y1 = 0;
     }
-    //rfbMarkRectAsModified (vt->screen, 0, 0, vt->maxx, vt->maxy);
 
     spiceterm_show_cursor (vt, 1);
 }
