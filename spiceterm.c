@@ -561,22 +561,25 @@ spiceterm_set_mode (spiceTerm *vt, int on_off)
         if (vt->esc_ques) {          /* DEC private modes set/reset */
             switch(vt->esc_buf[i]) {
             case 10:                   /* X11 mouse reporting on/off */
-            case 1000:
+            case 1000:                 /* SET_VT200_MOUSE */
+            case 1002:                 /* xterm SET_BTN_EVENT_MOUSE */
                 vt->report_mouse = on_off;
                 break;
             case 1049:	 	/* start/end special app mode (smcup/rmcup) */
                 spiceterm_set_alternate_buffer (vt, on_off);
                 break;
             case 25:	 	        /* Cursor on/off */
-            case 9:                   /* X10 mouse reporting on/off */
+            case 9:                     /* X10 mouse reporting on/off */
             case 6:			/* Origin relative/absolute */
             case 1:			/* Cursor keys in appl mode*/
             case 5:			/* Inverted screen on/off */
             case 7:			/* Autowrap on/off */
             case 8:			/* Autorepeat on/off */
                 break;
-            }
+             }
         } else { /* ANSI modes set/reset */
+            //g_assert_not_reached();
+
             /* fixme: implement me */
         }
     }
@@ -803,10 +806,10 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
 
         switch (ch) {
         case 'h':
-            spiceterm_set_mode (vt, 1);
+            spiceterm_set_mode(vt, 1);
             break;
         case 'l':
-            spiceterm_set_mode (vt, 0);
+            spiceterm_set_mode(vt, 0);
             break;
         case 'm':
             if (!vt->esc_count) {
@@ -1086,7 +1089,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         if (ch == 'c') {
             DPRINTF(1, "ESC[>c   Query term ID");
             spiceterm_respond_esc (vt, TERMIDCODE);
-        }
+         }
         break;
     case ESpercent:
         vt->tty_state = ESnormal;
@@ -1259,18 +1262,22 @@ spiceterm_set_xcut_text (char* str, int len, struct _rfbClientRec* cl)
   vt->selection_len = len;
 }
 */
-/*
+
 static void
-mouse_report (spiceTerm *vt, int butt, int mrx, int mry)
+mouse_report(spiceTerm *vt, int butt, int mrx, int mry)
 {
-  char buf[8];
+    char buf[8];
 
-  sprintf (buf, "[M%c%c%c", (char)(' ' + butt), (char)('!' + mrx),
-	   (char)('!' + mry));
+    sprintf (buf, "[M%c%c%c", (char)(' ' + butt), (char)('!' + mrx),
+             (char)('!' + mry));
 
-  spiceterm_respond_esc (vt, buf);
+    spiceterm_respond_esc(vt, buf);
+
+    // fixme
+    vt->screen->core->watch_update_mask(vt->screen->mwatch,
+                                        SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
+
 }
-*/
 
 void
 spiceterm_toggle_marked_cell (spiceTerm *vt, int pos)
@@ -1433,6 +1440,34 @@ static void
 spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
 {
     DPRINTF(0, "mask=%08x x=%d y=%d", buttons, x ,y);
+
+    static int last_mask = 0;
+
+    int cx = x/8;
+    int cy = y/16;
+
+    if (cx < 0) cx = 0;
+    if (cx >= vt->width) cx = vt->width - 1;
+    if (cy < 0) cy = 0;
+    if (cy >= vt->height) cy = vt->height - 1;
+
+    if (vt->report_mouse && buttons != last_mask) {
+        DPRINTF(0, "report=%d", vt->report_mouse);
+
+        last_mask = buttons;
+        if (buttons & 2) {
+            mouse_report(vt, 0, cx, cy);
+        }
+        if (buttons & 4) {
+            mouse_report (vt, 1, cx, cy);
+        }
+        if (buttons & 8) {
+            mouse_report (vt, 2, cx, cy);
+        }
+        if (!buttons) {
+            mouse_report (vt, 3, cx, cy);
+        }
+    }
 }
 
 static void 
@@ -1639,7 +1674,7 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
 static int 
 vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
 {
-    DPRINTF(0, "%d", len);
+    DPRINTF(1, "%d", len);
 
     return 0;
 }
@@ -1647,7 +1682,7 @@ vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
 static void 
 vmc_state(SpiceCharDeviceInstance *sin, int connected)
 {
-
+    /* IGNORE */
 }
 
 static SpiceCharDeviceInterface my_vdagent_sif = {
@@ -1808,7 +1843,7 @@ main (int argc, char** argv)
     dimensions.ws_col = vt->width;
     dimensions.ws_row = vt->height;
 
-    setenv ("TERM", TERM, 1);
+    setenv("TERM", TERM, 1);
 
     DPRINTF(1, "execute %s", command);
 
