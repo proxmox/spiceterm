@@ -186,7 +186,7 @@ spice_screen_update_from_bitmap_cmd(uint32_t surface_id, QXLRect bbox, uint8_t *
 
 static SimpleSpiceUpdate *
 spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c, 
-                           int fg, int bg)
+                           int fg, int bg, gboolean uline)
 {
     int top, left;
     uint8_t *dst;
@@ -196,7 +196,7 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
     QXLRect bbox;
     int cache_id = 0;
 
-    if (c < 256) {
+    if (!uline && c < 256) {
         cache_id = ((fg << 12) | (bg << 8) | (c & 255)) & 0x0ffff;
     }
 
@@ -222,12 +222,13 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
     unsigned char bgc_green = default_grn[bg];
 
     for (j = 0; j < 16; j++) {
+        gboolean ul = (j == 14) && uline;
         for (i = 0; i < 8; i++) {
-            if ((i&7) == 0) {
+            if (i == 0) {
                 d=*data;
                 data++;
             }
-            if (d&0x80) {
+            if (ul || d&0x80) {
                  *(dst) = fgc_blue;
                  *(dst+1) = fgc_green;
                  *(dst+2) = fgc_red;
@@ -685,15 +686,10 @@ spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, Te
 
     // unsuported attributes = (attrib.blink || attrib.unvisible)
 
-    // fixme:
-    //if (attrib.uline) {
-    //rfbDrawLine (vt->screen, rx, ry + 14, rxe, ry + 14, fg);
-    //}
-
     int c = vt_fontmap[ch];
 
     SimpleSpiceUpdate *update;
-    update = spice_screen_draw_char_cmd(spice_screen, x, y, c, fg, bg);
+    update = spice_screen_draw_char_cmd(spice_screen, x, y, c, fg, bg, attrib.uline);
     push_command(spice_screen, &update->ext);
 }
 
