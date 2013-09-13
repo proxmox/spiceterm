@@ -1264,6 +1264,20 @@ spiceterm_set_xcut_text (char* str, int len, struct _rfbClientRec* cl)
 */
 
 static void
+spiceterm_update_watch_mask(spiceTerm *vt, gboolean writable)
+{
+    g_assert(vt != NULL);
+
+    int mask = SPICE_WATCH_EVENT_READ;
+
+    if (writable) {
+        mask |= SPICE_WATCH_EVENT_WRITE;
+    }
+
+    vt->screen->core->watch_update_mask(vt->screen->mwatch, mask);
+}
+
+static void
 mouse_report(spiceTerm *vt, int butt, int mrx, int mry)
 {
     char buf[8];
@@ -1273,10 +1287,7 @@ mouse_report(spiceTerm *vt, int butt, int mrx, int mry)
 
     spiceterm_respond_esc(vt, buf);
 
-    // fixme
-    vt->screen->core->watch_update_mask(vt->screen->mwatch,
-                                        SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
-
+    spiceterm_update_watch_mask(vt, TRUE);
 }
 
 void
@@ -1623,8 +1634,7 @@ ret:
         }
     }
 
-    vt->screen->core->watch_update_mask(vt->screen->mwatch,
-                                        SPICE_WATCH_EVENT_READ|SPICE_WATCH_EVENT_WRITE);
+    spiceterm_update_watch_mask(vt, TRUE);
 }
 
 static uint8_t 
@@ -1800,7 +1810,7 @@ master_watch(int master, int event, void *opaque)
             write (master, vt->ibuf, vt->ibuf_count);
             vt->ibuf_count = 0; // fixme: what if not all data written
         }
-        vt->screen->core->watch_update_mask(vt->screen->mwatch, SPICE_WATCH_EVENT_READ);
+        spiceterm_update_watch_mask(vt, FALSE);
     }
 }
 
