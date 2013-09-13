@@ -141,15 +141,13 @@ spiceterm_toggle_marked_cell(spiceTerm *vt, int pos)
 
     if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) { return; }
 
-    int y1 = (vt->y_base + y) % vt->total_height;
-    int y2 = y1 - vt->y_displ;
-    if (y2 < 0) {
-        y2 += vt->total_height;
-    }
-    if (y2 < vt->height) {
-        TextCell *c = &vt->cells[y1 * vt->width + x];
-        c->attrib.selected =  c->attrib.selected ? 0 : 1;
-        spice_screen_draw_char(vt->screen, x, y, c->ch, c->attrib);
+    int y1 = (vt->y_displ + y) % vt->total_height;
+
+    TextCell *c = &vt->cells[y1 * vt->width + x];
+    c->attrib.selected =  c->attrib.selected ? 0 : 1;
+
+    if (y < vt->height) {
+        draw_char_at(vt, x, y, c->ch, c->attrib);
     }
 }
 
@@ -182,7 +180,7 @@ spiceterm_show_cursor (spiceTerm *vt, int show)
 }
 
 static void
-spiceterm_refresh (spiceTerm *vt)
+spiceterm_refresh(spiceTerm *vt)
 {
     int x, y, y1;
 
@@ -190,14 +188,28 @@ spiceterm_refresh (spiceTerm *vt)
     for(y = 0; y < vt->height; y++) {
         TextCell *c = vt->cells + y1 * vt->width;
         for(x = 0; x < vt->width; x++) {
-            draw_char_at (vt, x, y, c->ch, c->attrib);
+            draw_char_at(vt, x, y, c->ch, c->attrib);
             c++;
         }
         if (++y1 == vt->total_height)
             y1 = 0;
     }
 
-    spiceterm_show_cursor (vt, 1);
+    spiceterm_show_cursor(vt, 1);
+}
+
+void
+spiceterm_unselect_all(spiceTerm *vt)
+{
+    int i;
+
+    for (i = 0; i < vt->width*vt->total_height; i++) {
+        if (vt->cells[i].attrib.selected) {
+            vt->cells[i].attrib.selected = 0;
+        }
+    }
+
+    spiceterm_refresh(vt);
 }
 
 static void
@@ -1369,11 +1381,7 @@ spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
 
         if (!vt->mark_active) {
 
-            if (sel_start_pos != sel_end_pos) {
-                while (sel_start_pos <= sel_end_pos) {
-                    spiceterm_toggle_marked_cell(vt, sel_start_pos++);
-                }
-            }
+            spiceterm_unselect_all(vt);
 
             vt->mark_active = 1;
             sel_start_pos = sel_end_pos = pos;
