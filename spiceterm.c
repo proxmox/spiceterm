@@ -87,7 +87,7 @@ print_usage(const char *msg)
 }
 
 static void
-draw_char_at (spiceTerm *vt, int x, int y, gunichar2 ch, TextAttributes attrib)
+draw_char_at(spiceTerm *vt, int x, int y, gunichar2 ch, TextAttributes attrib)
 {
     if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) {
         return;
@@ -97,7 +97,7 @@ draw_char_at (spiceTerm *vt, int x, int y, gunichar2 ch, TextAttributes attrib)
 }
 
 static void
-spiceterm_update_xy (spiceTerm *vt, int x, int y)
+spiceterm_update_xy(spiceTerm *vt, int x, int y)
 {
     if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) { return; }
 
@@ -108,12 +108,12 @@ spiceterm_update_xy (spiceTerm *vt, int x, int y)
     }
     if (y2 < vt->height) {
         TextCell *c = &vt->cells[y1 * vt->width + x];
-        draw_char_at (vt, x, y2, c->ch, c->attrib);
+        draw_char_at(vt, x, y2, c->ch, c->attrib);
     }
 }
 
 static void
-spiceterm_clear_xy (spiceTerm *vt, int x, int y)
+spiceterm_clear_xy(spiceTerm *vt, int x, int y)
 {
     if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) { return; }
 
@@ -129,7 +129,7 @@ spiceterm_clear_xy (spiceTerm *vt, int x, int y)
         c->attrib.fgcol = vt->cur_attrib.fgcol;
         c->attrib.bgcol = vt->cur_attrib.bgcol;
 
-        draw_char_at (vt, x, y, c->ch, c->attrib);
+        draw_char_at(vt, x, y, c->ch, c->attrib);
     }
 }
 
@@ -152,7 +152,7 @@ spiceterm_toggle_marked_cell(spiceTerm *vt, int pos)
 }
 
 static void
-spiceterm_show_cursor (spiceTerm *vt, int show)
+spiceterm_show_cursor(spiceTerm *vt, int show)
 {
     int x = vt->cx;
     if (x >= vt->width) {
@@ -172,9 +172,9 @@ spiceterm_show_cursor (spiceTerm *vt, int show)
         if (show) {
             TextAttributes attrib = vt->default_attrib;
             attrib.invers = !(attrib.invers); /* invert fg and bg */
-            draw_char_at (vt, x, y, c->ch, attrib);
+            draw_char_at(vt, x, y, c->ch, attrib);
         } else {
-            draw_char_at (vt, x, y, c->ch, c->attrib);
+            draw_char_at(vt, x, y, c->ch, c->attrib);
         }
     }
 }
@@ -213,7 +213,7 @@ spiceterm_unselect_all(spiceTerm *vt)
 }
 
 static void
-spiceterm_scroll_down (spiceTerm *vt, int top, int bottom, int lines)
+spiceterm_scroll_down(spiceTerm *vt, int top, int bottom, int lines)
 {
     if ((top + lines) >= bottom) {
         lines = bottom - top -1;
@@ -228,7 +228,7 @@ spiceterm_scroll_down (spiceTerm *vt, int top, int bottom, int lines)
         int src = ((vt->y_base + top + i) % vt->total_height)*vt->width;
         int dst = ((vt->y_base + top + lines + i) % vt->total_height)*vt->width;
 
-        memmove(vt->cells + dst, vt->cells + src, vt->width*sizeof (TextCell));
+        memmove(vt->cells + dst, vt->cells + src, vt->width*sizeof(TextCell));
     }
 
     for (i = 0; i < lines; i++) {
@@ -251,7 +251,7 @@ spiceterm_scroll_down (spiceTerm *vt, int top, int bottom, int lines)
 }
 
 static void
-spiceterm_scroll_up (spiceTerm *vt, int top, int bottom, int lines, int moveattr)
+spiceterm_scroll_up(spiceTerm *vt, int top, int bottom, int lines, int moveattr)
 {
     if ((top + lines) >= bottom) {
         lines = bottom - top - 1;
@@ -281,7 +281,7 @@ spiceterm_scroll_up (spiceTerm *vt, int top, int bottom, int lines, int moveattr
         int dst = ((vt->y_base + top + i) % vt->total_height)*vt->width;
         int src = ((vt->y_base + top + lines + i) % vt->total_height)*vt->width;
 
-        memmove(vt->cells + dst, vt->cells + src, vt->width*sizeof (TextCell));
+        memmove(vt->cells + dst, vt->cells + src, vt->width*sizeof(TextCell));
     }
 
     for (i = 1; i <= lines; i++) {
@@ -296,7 +296,7 @@ spiceterm_scroll_up (spiceTerm *vt, int top, int bottom, int lines, int moveattr
 }
 
 static void
-spiceterm_virtual_scroll (spiceTerm *vt, int lines)
+spiceterm_virtual_scroll(spiceTerm *vt, int lines)
 {
     if (vt->altbuf || lines == 0) return;
 
@@ -324,13 +324,13 @@ spiceterm_virtual_scroll (spiceTerm *vt, int lines)
         }
     }
 
-    spiceterm_refresh (vt);
+    spiceterm_refresh(vt);
 }
 
 static void
-spiceterm_respond_esc (spiceTerm *vt, const char *esc)
+spiceterm_respond_esc(spiceTerm *vt, const char *esc)
 {
-    int len = strlen (esc);
+    int len = strlen(esc);
     int i;
 
     if (vt->ibuf_count < (IBUFSIZE - 1 - len)) {
@@ -342,17 +342,17 @@ spiceterm_respond_esc (spiceTerm *vt, const char *esc)
 }
 
 static void
-spiceterm_put_lf (spiceTerm *vt)
+spiceterm_put_lf(spiceTerm *vt)
 {
     if (vt->cy + 1 == vt->region_bottom) {
 
         if (vt->altbuf || vt->region_top != 0 || vt->region_bottom != vt->height) {
-            spiceterm_scroll_up (vt, vt->region_top, vt->region_bottom, 1, 1);
+            spiceterm_scroll_up(vt, vt->region_top, vt->region_bottom, 1, 1);
             return;
         }
 
         if (vt->y_displ == vt->y_base) {
-            spiceterm_scroll_up (vt, vt->region_top, vt->region_bottom, 1, 0);
+            spiceterm_scroll_up(vt, vt->region_top, vt->region_bottom, 1, 0);
         }
 
         if (vt->y_displ == vt->y_base) {
@@ -386,7 +386,7 @@ spiceterm_put_lf (spiceTerm *vt)
 }
 
 static void
-spiceterm_csi_m (spiceTerm *vt)
+spiceterm_csi_m(spiceTerm *vt)
 {
     int i;
 
@@ -484,7 +484,7 @@ spiceterm_csi_m (spiceTerm *vt)
 }
 
 static void
-spiceterm_save_cursor (spiceTerm *vt)
+spiceterm_save_cursor(spiceTerm *vt)
 {
     vt->cx_saved = vt->cx;
     vt->cy_saved = vt->cy;
@@ -496,7 +496,7 @@ spiceterm_save_cursor (spiceTerm *vt)
 }
 
 static void
-spiceterm_restore_cursor (spiceTerm *vt)
+spiceterm_restore_cursor(spiceTerm *vt)
 {
     vt->cx = vt->cx_saved;
     vt->cy = vt->cy_saved;
@@ -508,7 +508,7 @@ spiceterm_restore_cursor (spiceTerm *vt)
 }
 
 static void
-spiceterm_set_alternate_buffer (spiceTerm *vt, int on_off)
+spiceterm_set_alternate_buffer(spiceTerm *vt, int on_off)
 {
     int x, y;
 
@@ -522,7 +522,7 @@ spiceterm_set_alternate_buffer (spiceTerm *vt, int on_off)
 
         /* alternate buffer & cursor */
 
-        spiceterm_save_cursor (vt);
+        spiceterm_save_cursor(vt);
         /* save screen to altcels */
         for (y = 0; y < vt->height; y++) {
             int y1 = (vt->y_base + y) % vt->total_height;
@@ -534,7 +534,7 @@ spiceterm_set_alternate_buffer (spiceTerm *vt, int on_off)
         /* clear screen */
         for (y = 0; y <= vt->height; y++) {
             for (x = 0; x < vt->width; x++) {
-                spiceterm_clear_xy (vt, x, y);
+                spiceterm_clear_xy(vt, x, y);
             }
         }
 
@@ -552,14 +552,14 @@ spiceterm_set_alternate_buffer (spiceTerm *vt, int on_off)
             }
         }
 
-        spiceterm_restore_cursor (vt);
+        spiceterm_restore_cursor(vt);
     }
 
-    spiceterm_refresh (vt);
+    spiceterm_refresh(vt);
 }
 
 static void
-spiceterm_set_mode (spiceTerm *vt, int on_off)
+spiceterm_set_mode(spiceTerm *vt, int on_off)
 {
     int i;
 
@@ -592,7 +592,7 @@ spiceterm_set_mode (spiceTerm *vt, int on_off)
 }
 
 static void
-spiceterm_gotoxy (spiceTerm *vt, int x, int y)
+spiceterm_gotoxy(spiceTerm *vt, int x, int y)
 {
     /* verify all boundaries */
 
@@ -617,7 +617,7 @@ spiceterm_gotoxy (spiceTerm *vt, int x, int y)
     vt->cy = y;
 }
 
-static void 
+static void
 debug_print_escape_buffer(spiceTerm *vt, const char *func, const char *prefix,
                           const char *qes, gunichar2 ch)
 {
@@ -642,7 +642,7 @@ enum { ESnormal, ESesc, ESsquare, ESgetpars, ESgotpars, ESfunckey,
        ESpalette, ESidquery, ESosc1, ESosc2};
 
 static void
-spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
+spiceterm_putchar(spiceTerm *vt, gunichar2 ch)
 {
     int x, y, i, c;
 
@@ -665,10 +665,10 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             vt->tty_state = ESpercent;
             break;
         case '7':
-            spiceterm_save_cursor (vt);
+            spiceterm_save_cursor(vt);
             break;
         case '8':
-            spiceterm_restore_cursor (vt);
+            spiceterm_restore_cursor(vt);
             break;
         case '(':
             vt->tty_state = ESsetG0; // SET G0
@@ -679,7 +679,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         case 'M':
             /* cursor up (ri) */
             if (vt->cy == vt->region_top)
-                spiceterm_scroll_down (vt, vt->region_top, vt->region_bottom, 1);
+                spiceterm_scroll_down(vt, vt->region_top, vt->region_bottom, 1);
             else if (vt->cy > 0) {
                 vt->cy--;
             }
@@ -821,7 +821,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             if (!vt->esc_count) {
                 vt->esc_count++; // default parameter 0
             }
-            spiceterm_csi_m (vt);
+            spiceterm_csi_m(vt);
             break;
         case 'n':
             /* report cursor position */
@@ -872,16 +872,16 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         case 'G':
         case '`':
             /* move cursor to column */
-            spiceterm_gotoxy (vt, vt->esc_buf[0] - 1, vt->cy);
+            spiceterm_gotoxy(vt, vt->esc_buf[0] - 1, vt->cy);
             break;
         case 'd':
             /* move cursor to row */
-            spiceterm_gotoxy (vt, vt->cx , vt->esc_buf[0] - 1);
+            spiceterm_gotoxy(vt, vt->cx , vt->esc_buf[0] - 1);
             break;
         case 'f':
         case 'H':
             /* move cursor to row, column */
-            spiceterm_gotoxy (vt, vt->esc_buf[1] - 1,  vt->esc_buf[0] - 1);
+            spiceterm_gotoxy(vt, vt->esc_buf[1] - 1,  vt->esc_buf[0] - 1);
             break;
         case 'J':
             switch (vt->esc_buf[0]) {
@@ -903,7 +903,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
                         if (y == vt->cy && x > vt->cx) {
                             break;
                         }
-                        spiceterm_clear_xy (vt, x, y);
+                        spiceterm_clear_xy(vt, x, y);
                     }
                 }
                 break;
@@ -911,7 +911,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
                 /* clear entire screen */
                 for (y = 0; y <= vt->height; y++) {
                     for (x = 0; x < vt->width; x++) {
-                        spiceterm_clear_xy (vt, x, y);
+                        spiceterm_clear_xy(vt, x, y);
                     }
                 }
                 break;
@@ -922,19 +922,19 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             case 0:
                 /* clear to eol */
                 for(x = vt->cx; x < vt->width; x++) {
-                    spiceterm_clear_xy (vt, x, vt->cy);
+                    spiceterm_clear_xy(vt, x, vt->cy);
                 }
                 break;
             case 1:
                 /* clear from beginning of line */
                 for (x = 0; x <= vt->cx; x++) {
-                    spiceterm_clear_xy (vt, x, vt->cy);
+                    spiceterm_clear_xy(vt, x, vt->cy);
                 }
                 break;
             case 2:
                 /* clear entire line */
                 for(x = 0; x < vt->width; x++) {
-                    spiceterm_clear_xy (vt, x, vt->cy);
+                    spiceterm_clear_xy(vt, x, vt->cy);
                 }
                 break;
             }
@@ -948,7 +948,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             else if (!c)
                 c = 1;
 
-            spiceterm_scroll_down (vt, vt->cy, vt->region_bottom, c);
+            spiceterm_scroll_down(vt, vt->cy, vt->region_bottom, c);
             break;
         case 'M':
             /* delete line */
@@ -959,19 +959,19 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             else if (!c)
                 c = 1;
 
-            spiceterm_scroll_up (vt, vt->cy, vt->region_bottom, c, 1);
+            spiceterm_scroll_up(vt, vt->cy, vt->region_bottom, c, 1);
             break;
         case 'T':
             /* scroll down */
             c = vt->esc_buf[0];
             if (!c) c = 1;
-            spiceterm_scroll_down (vt, vt->region_top, vt->region_bottom, c);
+            spiceterm_scroll_down(vt, vt->region_top, vt->region_bottom, c);
             break;
         case 'S':
             /* scroll up */
             c = vt->esc_buf[0];
             if (!c) c = 1;
-            spiceterm_scroll_up (vt, vt->region_top, vt->region_bottom, c, 1);
+            spiceterm_scroll_up(vt, vt->region_top, vt->region_bottom, c, 1);
             break;
         case 'P':
             /* delete c character */
@@ -987,19 +987,19 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
                 TextCell *dst = &vt->cells[y1 * vt->width + x];
                 TextCell *src = dst + c;
                 *dst = *src;
-                spiceterm_update_xy (vt, x + c, vt->cy);
+                spiceterm_update_xy(vt, x + c, vt->cy);
                 src->ch = ' ';
                 src->attrib = vt->default_attrib;
-                spiceterm_update_xy (vt, x, vt->cy);
+                spiceterm_update_xy(vt, x, vt->cy);
             }
             break;
         case 's':
             /* save cursor position */
-            spiceterm_save_cursor (vt);
+            spiceterm_save_cursor(vt);
             break;
         case 'u':
             /* restore cursor position */
-            spiceterm_restore_cursor (vt);
+            spiceterm_restore_cursor(vt);
             break;
         case 'X':
             /* erase c characters */
@@ -1009,7 +1009,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             if (c > (vt->width - vt->cx)) c = vt->width - vt->cx;
 
             for(i = 0; i < c; i++) {
-                spiceterm_clear_xy (vt, vt->cx + i, vt->cy);
+                spiceterm_clear_xy(vt, vt->cx + i, vt->cy);
             }
             break;
         case '@':
@@ -1028,7 +1028,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
                 spiceterm_update_xy (vt, x + c, vt->cy);
                 src->ch = ' ';
                 src->attrib = vt->cur_attrib;
-                spiceterm_update_xy (vt, x, vt->cy);
+                spiceterm_update_xy(vt, x, vt->cy);
             }
 
             break;
@@ -1094,7 +1094,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
 
         if (ch == 'c') {
             DPRINTF(1, "ESC[>c   Query term ID");
-            spiceterm_respond_esc (vt, TERMIDCODE);
+            spiceterm_respond_esc(vt, TERMIDCODE);
          }
         break;
     case ESpercent:
@@ -1126,7 +1126,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         case 9:  /* tabspace */
             if (vt->cx + (8 - (vt->cx % 8)) > vt->width) {
                 vt->cx = 0;
-                spiceterm_put_lf (vt);
+                spiceterm_put_lf(vt);
             } else {
                 vt->cx = vt->cx + (8 - (vt->cx % 8));
             }
@@ -1134,7 +1134,7 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
         case 10:  /* LF,*/
         case 11:  /* VT */
         case 12:  /* FF */
-            spiceterm_put_lf (vt);
+            spiceterm_put_lf(vt);
             break;
         case 13:  /* carriage return */
             vt->cx = 0;
@@ -1164,14 +1164,14 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
             if (vt->cx >= vt->width) {
                 /* line wrap */
                 vt->cx = 0;
-                spiceterm_put_lf (vt);
+                spiceterm_put_lf(vt);
             }
 
             int y1 = (vt->y_base + vt->cy) % vt->total_height;
             TextCell *c = &vt->cells[y1*vt->width + vt->cx];
             c->attrib = vt->cur_attrib;
             c->ch = ch;
-            spiceterm_update_xy (vt, vt->cx, vt->cy);
+            spiceterm_update_xy(vt, vt->cx, vt->cy);
             vt->cx++;
             break;
         }
@@ -1180,11 +1180,11 @@ spiceterm_putchar (spiceTerm *vt, gunichar2 ch)
 }
 
 static int
-spiceterm_puts (spiceTerm *vt, const char *buf, int len)
+spiceterm_puts(spiceTerm *vt, const char *buf, int len)
 {
     gunichar2 tc;
 
-    spiceterm_show_cursor (vt, 0);
+    spiceterm_show_cursor(vt, 0);
 
     while (len) {
         unsigned char c = *buf;
@@ -1244,17 +1244,17 @@ spiceterm_puts (spiceTerm *vt, const char *buf, int len)
             }
         }
 
-        spiceterm_putchar (vt, tc);
+        spiceterm_putchar(vt, tc);
     }
 
-    spiceterm_show_cursor (vt, 1);
+    spiceterm_show_cursor(vt, 1);
 
     return len;
 }
 
 /* fixme:
 void
-spiceterm_set_xcut_text (char* str, int len, struct _rfbClientRec* cl)
+spiceterm_set_xcut_text(char* str, int len, struct _rfbClientRec* cl)
 {
   spiceTerm *vt =(spiceTerm *)cl->screen->screenData;
 
@@ -1288,7 +1288,7 @@ mouse_report(spiceTerm *vt, int butt, int mrx, int mry)
 {
     char buf[8];
 
-    sprintf (buf, "[M%c%c%c", (char)(' ' + butt), (char)('!' + mrx),
+    sprintf(buf, "[M%c%c%c", (char)(' ' + butt), (char)('!' + mrx),
              (char)('!' + mry));
 
     spiceterm_respond_esc(vt, buf);
@@ -1350,10 +1350,10 @@ spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
             mouse_report (vt, 1, cx, cy);
         }
         if (buttons & 8) {
-            mouse_report (vt, 2, cx, cy);
+            mouse_report(vt, 2, cx, cy);
         }
-        if (!buttons) {
-            mouse_report (vt, 3, cx, cy);
+        if(!buttons) {
+            mouse_report(vt, 3, cx, cy);
         }
     }
 
@@ -1390,7 +1390,6 @@ spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
         } else {
 
             if (pos != sel_end_pos) {
-
                 if (pos > sel_end_pos) {
                     cx = sel_end_pos; cy=pos;
                 } else {
@@ -1443,7 +1442,7 @@ spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
     }
 }
 
-static void 
+static void
 my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
     // spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
@@ -1453,7 +1452,7 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
     return;
 }
 
-static void 
+static void
 my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
 {
     spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
@@ -1587,7 +1586,7 @@ ret:
     spiceterm_update_watch_mask(vt, TRUE);
 }
 
-static uint8_t 
+static uint8_t
 my_kbd_get_leds(SpiceKbdInstance *sin)
 {
     return 0;
@@ -1604,7 +1603,7 @@ static SpiceKbdInterface my_keyboard_sif = {
 };
 
 /* vdagent interface - to get mouse/clipboarde support */
-static int 
+static int
 vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
 {
     spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, vdagent_sin);
@@ -1612,7 +1611,7 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
     VDIChunkHeader *hdr = (VDIChunkHeader *)buf;
     VDAgentMessage *msg = (VDAgentMessage *)&hdr[1];
 
-    //g_assert(hdr->port == VDP_SERVER_PORT); 
+    //g_assert(hdr->port == VDP_SERVER_PORT);
     g_assert(msg->protocol == VD_AGENT_PROTOCOL);
 
     DPRINTF(1, "%d %d %d %d", len, hdr->port, msg->protocol, msg->type);
@@ -1631,7 +1630,7 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
     return len;
 }
 
-static int 
+static int
 vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
 {
     DPRINTF(1, "%d", len);
@@ -1639,7 +1638,7 @@ vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
     return 0;
 }
 
-static void 
+static void
 vmc_state(SpiceCharDeviceInstance *sin, int connected)
 {
     /* IGNORE */
@@ -1724,8 +1723,8 @@ create_spiceterm(int argc, char** argv, int maxx, int maxy, guint timeout)
     return vt;
 }
 
-static gboolean 
-master_error_callback(GIOChannel *channel, GIOCondition condition, 
+static gboolean
+master_error_callback(GIOChannel *channel, GIOCondition condition,
                       gpointer data)
 {
     //spiceTerm *vt = (spiceTerm *)data;
@@ -1737,7 +1736,7 @@ master_error_callback(GIOChannel *channel, GIOCondition condition,
     return FALSE;
 }
 
-static void 
+static void
 master_watch(int master, int event, void *opaque)
 {
     spiceTerm *vt = (spiceTerm *)opaque;
@@ -1759,11 +1758,11 @@ master_watch(int master, int event, void *opaque)
             DPRINTF(1, "write input %x %d", vt->ibuf[0], vt->ibuf_count);
             if ((c = write (master, vt->ibuf, vt->ibuf_count)) >= 0) {
                 if (c == vt->ibuf_count) {
-                    vt->ibuf_count = 0;                   
+                    vt->ibuf_count = 0;
                 } else if (c > 0) {
                     // not all data written
                     memmove(vt->ibuf, vt->ibuf + c, vt->ibuf_count - c);
-                    vt->ibuf_count -= c; 
+                    vt->ibuf_count -= c;
                 } else {
                     // nothing written -ignore and try later
                 }
@@ -1846,7 +1845,7 @@ main (int argc, char** argv)
     g_io_channel_set_flags(channel, G_IO_FLAG_NONBLOCK, NULL);
     g_io_channel_set_encoding(channel, NULL, NULL);
     g_io_add_watch(channel, G_IO_ERR|G_IO_HUP, master_error_callback, vt);
- 
+
     vt->screen->mwatch = vt->screen->core->watch_add(
         master, SPICE_WATCH_EVENT_READ /* |SPICE_WATCH_EVENT_WRITE */,
         master_watch, vt);
