@@ -1791,26 +1791,39 @@ static void
 master_watch(int master, int event, void *opaque)
 {
     spiceTerm *vt = (spiceTerm *)opaque;
+    int c;
 
     // fixme: if (!vt->mark_active) {
 
     if (event == SPICE_WATCH_EVENT_READ) {
         char buffer[1024];
-        int c;
         while ((c = read(master, buffer, 1024)) == -1) {
 	    if (errno != EAGAIN) break;
         }
         if (c == -1) {
-            g_error("got read error"); // fixme
+            perror("master pipe read error"); // fixme
         }
         spiceterm_puts (vt, buffer, c);
     } else {
         if (vt->ibuf_count > 0) {
             DPRINTF(1, "write input %x %d", vt->ibuf[0], vt->ibuf_count);
-            write (master, vt->ibuf, vt->ibuf_count);
-            vt->ibuf_count = 0; // fixme: what if not all data written
+            if ((c = write (master, vt->ibuf, vt->ibuf_count)) >= 0) {
+                if (c == vt->ibuf_count) {
+                    vt->ibuf_count = 0;                   
+                } else if (c > 0) {
+                    // not all data written
+                    memmove(vt->ibuf, vt->ibuf + c, vt->ibuf_count - c);
+                    vt->ibuf_count -= c; 
+                } else {
+                    // nothing written -ignore and try later
+                }
+            } else {
+                perror("master pipe write error");
+            }
         }
-        spiceterm_update_watch_mask(vt, FALSE);
+        if (vt->ibuf_count == 0) {
+            spiceterm_update_watch_mask(vt, FALSE);
+        }
     }
 }
 
