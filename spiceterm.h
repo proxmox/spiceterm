@@ -12,6 +12,7 @@ typedef struct TextAttributes {
     unsigned int blink:1;
     unsigned int invers:1;
     unsigned int unvisible:1;
+    unsigned int selected:1;
 } TextAttributes;
 
 typedef struct TextCell {

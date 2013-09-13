@@ -634,11 +634,19 @@ QXLInterface display_sif = {
 
 
 void 
-spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib)
+spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, 
+                       TextAttributes attrib)
 {
     int fg, bg;
 
+    int invers;
     if (attrib.invers) {
+        invers = attrib.selected ? 0 : 1;
+    } else {
+        invers = attrib.selected ? 1 : 0;
+    }        
+
+    if (invers) {
         bg = attrib.fgcol;
         fg = attrib.bgcol;
     } else {

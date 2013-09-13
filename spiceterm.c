@@ -86,32 +86,6 @@ print_usage(const char *msg)
     fprintf(stderr, "USAGE: spiceterm [spiceopts] [-c command [args]]\n");
 }
 
-/* Convert UCS2 to UTF8 sequence, trailing zero */
-/*
-static int
-ucs2_to_utf8 (gunichar2 c, char *out)
-{
-  if (c < 0x80) {
-    out[0] = c;			//  0*******
-    out[1] = 0;
-    return 1;
-  } else if (c < 0x800) {
-    out[0] = 0xc0 | (c >> 6); 	//  110***** 10******
-    out[1] = 0x80 | (c & 0x3f);
-    out[2] = 0;
-    return 2;
-  } else {
-    out[0] = 0xe0 | (c >> 12); 	//  1110**** 10****** 10******
-    out[1] = 0x80 | ((c >> 6) & 0x3f);
-    out[2] = 0x80 | (c & 0x3f);
-    out[3] = 0;
-    return 3;
-  }
-
-  return 0;
-}
-*/
-
 static void
 draw_char_at (spiceTerm *vt, int x, int y, gunichar2 ch, TextAttributes attrib)
 {
@@ -156,6 +130,26 @@ spiceterm_clear_xy (spiceTerm *vt, int x, int y)
         c->attrib.bgcol = vt->cur_attrib.bgcol;
 
         draw_char_at (vt, x, y, c->ch, c->attrib);
+    }
+}
+
+void
+spiceterm_toggle_marked_cell(spiceTerm *vt, int pos)
+{
+    int x = (pos%vt->width);
+    int y = (pos/vt->width);
+
+    if (x < 0 || y < 0 || x >= vt->width || y >= vt->height) { return; }
+
+    int y1 = (vt->y_base + y) % vt->total_height;
+    int y2 = y1 - vt->y_displ;
+    if (y2 < 0) {
+        y2 += vt->total_height;
+    }
+    if (y2 < vt->height) {
+        TextCell *c = &vt->cells[y1 * vt->width + x];
+        c->attrib.selected =  c->attrib.selected ? 0 : 1;
+        spice_screen_draw_char(vt->screen, x, y, c->ch, c->attrib);
     }
 }
 
@@ -1290,170 +1284,43 @@ mouse_report(spiceTerm *vt, int butt, int mrx, int mry)
     spiceterm_update_watch_mask(vt, TRUE);
 }
 
-void
-spiceterm_toggle_marked_cell (spiceTerm *vt, int pos)
+static void
+spiceterm_respond_unichar2(spiceTerm *vt, gunichar2 uc)
 {
+    if (vt->utf8) {
+        gchar buf[10];
+        gint len = g_unichar_to_utf8(uc, buf);
 
-/* fixme:
-  int x= (pos%vt->width)*8;
-  int y= (pos/vt->width)*16;
-
-  int i,j;
-  rfbScreenInfoPtr s=vt->screen;
-
-  char *b = s->frameBuffer+y*s->width+x;
-
-  for (j=0; j < 16; j++) {
-    for(i=0; i < 8; i++) {
-      b[j*s->width+i] ^= 0x0f;
-      rfbMarkRectAsModified (s, x, y, x+8, y+16);
-    }
-  }
-*/
-}
-
-/* fixme:
-
-void
-spiceterm_pointer_event (int buttonMask, int x, int y, rfbClientPtr cl)
-{
-
-  spiceTerm *vt =(spiceTerm *)cl->screen->screenData;
-  static int button2_released = 1;
-  static int last_mask = 0;
-  static int sel_start_pos = 0;
-  static int sel_end_pos = 0;
-  int i;
-
-  int cx = x/8;
-  int cy = y/16;
-
-  if (cx < 0) cx = 0;
-  if (cx >= vt->width) cx = vt->width - 1;
-  if (cy < 0) cy = 0;
-  if (cy >= vt->height) cy = vt->height - 1;
-
-  if (vt->report_mouse && buttonMask != last_mask) {
-    last_mask = buttonMask;
-    if (buttonMask & 1) {
-      mouse_report (vt, 0, cx, cy);
-    }
-    if (buttonMask & 2) {
-      mouse_report (vt, 1, cx, cy);
-    }
-    if (buttonMask & 4) {
-      mouse_report (vt, 2, cx, cy);
-    }
-    if (!buttonMask) {
-      mouse_report (vt, 3, cx, cy);
-    }
-  }
-
-  if (buttonMask & 2) {
-    if(button2_released && vt->selection) {
-      int i;
-      for(i = 0; i < vt->selection_len; i++) {
-	if (vt->ibuf_count < IBUFSIZE - 6) { // uft8 is max 6 characters wide
-	  if (vt->utf8) {
-	    vt->ibuf_count += ucs2_to_utf8 (vt->selection[i], &vt->ibuf[vt->ibuf_count]);
-	  } else  {
-	    vt->ibuf[vt->ibuf_count++] = vt->selection[i];
-	  }
-	}
-      }
-      if (vt->y_displ != vt->y_base) {
-	vt->y_displ = vt->y_base;
-	spiceterm_refresh (vt);
-      }
-    }
-    button2_released = 0;
-  } else {
-    button2_released = 1;
-  }
-
-  if (buttonMask & 1) {
-    int pos = cy*vt->width + cx;
-
-    // code borrowed from libvncserver (VNCconsole.c)
-
-    if (!vt->mark_active) {
-
-      vt->mark_active = 1;
-      sel_start_pos = sel_end_pos = pos;
-      spiceterm_toggle_marked_cell (vt, pos);
-
+        if (len > 0) {
+            if ((vt->ibuf_count + len) < IBUFSIZE) {
+                int i;
+                for (i = 0; i < len; i++) {
+                    vt->ibuf[vt->ibuf_count++] = buf[i];
+                }
+            } else {
+                fprintf(stderr, "warning: input buffer overflow\n");
+            }
+        }
     } else {
-
-      if (pos != sel_end_pos) {
-
-	if (pos > sel_end_pos) {
-	  cx = sel_end_pos; cy=pos;
-	} else {
-	  cx=pos; cy=sel_end_pos;
-	}
-
-	if (cx < sel_start_pos) {
-	  if (cy < sel_start_pos) cy--;
-	} else {
-	  cx++;
-	}
-
-	while (cx <= cy) {
-	  spiceterm_toggle_marked_cell (vt, cx);
-	  cx++;
-	}
-
-	sel_end_pos = pos;
-      }
+        if ((vt->ibuf_count + 1) < IBUFSIZE) {
+            vt->ibuf[vt->ibuf_count++] = (char)uc;
+        } else {
+            fprintf(stderr, "warning: input buffer overflow\n");
+        }
     }
-
-  } else if (vt->mark_active) {
-    vt->mark_active = 0;
-
-    if (sel_start_pos > sel_end_pos) {
-      int tmp = sel_start_pos - 1;
-      sel_start_pos = sel_end_pos;
-      sel_end_pos = tmp;
-    }
-
-    int len = sel_end_pos - sel_start_pos + 1;
-
-    if (vt->selection) free (vt->selection);
-    vt->selection = (gunichar2 *)malloc (len*sizeof (gunichar2));
-    vt->selection_len = len;
-    char *sel_latin1 = (char *)malloc (len + 1);
-
-    for (i = 0; i < len; i++) {
-      int pos = sel_start_pos + i;
-      int x = pos % vt->width;
-      int y1 = ((pos / vt->width) + vt->y_displ) % vt->total_height;
-      TextCell *c = &vt->cells[y1*vt->width + x];
-      vt->selection[i] = c->ch;
-      sel_latin1[i] = (char)c->ch;
-      c++;
-    }
-    sel_latin1[len] = 0;
-    rfbGotXCutText (vt->screen, sel_latin1, len);
-    free (sel_latin1);
-
-    while (sel_start_pos <= sel_end_pos) {
-      spiceterm_toggle_marked_cell (vt, sel_start_pos++);
-    }
-
-  }
-
-  rfbDefaultPtrAddEvent (buttonMask, x, y, cl);
-
 }
-*/
 
 static void
 spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
 {
-    DPRINTF(0, "mask=%08x x=%d y=%d", buttons, x ,y);
+    DPRINTF(1, "mask=%08x x=%d y=%d", buttons, x ,y);
 
     static int last_mask = 0;
+    static int sel_start_pos = 0;
+    static int sel_end_pos = 0;
+    static int button2_released = 1;
 
+    int i;
     int cx = x/8;
     int cy = y/16;
 
@@ -1463,8 +1330,6 @@ spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
     if (cy >= vt->height) cy = vt->height - 1;
 
     if (vt->report_mouse && buttons != last_mask) {
-        DPRINTF(0, "report=%d", vt->report_mouse);
-
         last_mask = buttons;
         if (buttons & 2) {
             mouse_report(vt, 0, cx, cy);
@@ -1478,6 +1343,95 @@ spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
         if (!buttons) {
             mouse_report (vt, 3, cx, cy);
         }
+    }
+
+    if (buttons & 4) {
+        if(button2_released && vt->selection) {
+            int i;
+            for(i = 0; i < vt->selection_len; i++) {
+                spiceterm_respond_unichar2(vt, vt->selection[i]);
+            }
+            spiceterm_update_watch_mask(vt, TRUE);
+            if (vt->y_displ != vt->y_base) {
+                vt->y_displ = vt->y_base;
+                spiceterm_refresh(vt);
+            }
+        }
+        button2_released = 0;
+    } else {
+        button2_released = 1;
+    }
+
+    if (buttons & 2) {
+        int pos = cy*vt->width + cx;
+
+        // code borrowed from libvncserver (VNCconsole.c)
+
+        if (!vt->mark_active) {
+
+            if (sel_start_pos != sel_end_pos) {
+                while (sel_start_pos <= sel_end_pos) {
+                    spiceterm_toggle_marked_cell(vt, sel_start_pos++);
+                }
+            }
+
+            vt->mark_active = 1;
+            sel_start_pos = sel_end_pos = pos;
+            spiceterm_toggle_marked_cell(vt, pos);
+
+        } else {
+
+            if (pos != sel_end_pos) {
+
+                if (pos > sel_end_pos) {
+                    cx = sel_end_pos; cy=pos;
+                } else {
+                    cx=pos; cy=sel_end_pos;
+                }
+
+                if (cx < sel_start_pos) {
+                    if (cy < sel_start_pos) cy--;
+                } else {
+                    cx++;
+                }
+
+                while (cx <= cy) {
+                    spiceterm_toggle_marked_cell(vt, cx);
+                    cx++;
+                }
+
+                sel_end_pos = pos;
+            }
+        }
+
+    } else if (vt->mark_active) {
+        vt->mark_active = 0;
+
+        if (sel_start_pos > sel_end_pos) {
+            int tmp = sel_start_pos - 1;
+            sel_start_pos = sel_end_pos;
+            sel_end_pos = tmp;
+        }
+
+        int len = sel_end_pos - sel_start_pos + 1;
+
+        if (vt->selection) free (vt->selection);
+        vt->selection = (gunichar2 *)malloc (len*sizeof(gunichar2));
+        vt->selection_len = len;
+
+        for (i = 0; i < len; i++) {
+            int pos = sel_start_pos + i;
+            int x = pos % vt->width;
+            int y1 = ((pos / vt->width) + vt->y_displ) % vt->total_height;
+            TextCell *c = &vt->cells[y1*vt->width + x];
+            vt->selection[i] = c->ch;
+            c++;
+        }
+
+        DPRINTF(1, "selection length = %d", vt->selection_len);
+
+        // fixme: tell client we have something seletced
+        //rfbGotXCutText (vt->screen, sel_latin1, len);
     }
 }
 
@@ -1499,7 +1453,7 @@ my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
     static int shift = 0;
     char *esc = NULL;
 
-    guint uc = 0;
+    gunichar2 uc = 0;
 
     DPRINTF(1, "flags=%d keySym=%08x", flags, keySym);
 
@@ -1606,19 +1560,7 @@ my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
             if (esc) {
                 spiceterm_respond_esc(vt, esc);
             } else if (uc > 0) {
-                if (vt->utf8) {
-                    gchar buf[10];
-                    gint len = g_unichar_to_utf8(uc, buf);
-
-                    if (len > 0) {
-                        int i;
-                        for (i = 0; i < len; i++) {
-                            vt->ibuf[vt->ibuf_count++] = buf[i];
-                        }
-                    }
-                } else {
-                    vt->ibuf[vt->ibuf_count++] = (char)uc;
-                }
+                spiceterm_respond_unichar2(vt, uc);
             }
         }
     }
