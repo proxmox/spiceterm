@@ -79,8 +79,8 @@ unsigned char color_table[] = { 0, 4, 2, 6, 1, 5, 3, 7,
 				8,12,10,14, 9,13,11,15 };
 
 
-static void vdagent_grab_clipboard(spiceTerm *vt);
-static void vdagent_request_clipboard(spiceTerm *vt);
+static void vdagent_grab_clipboard(spiceTerm *vt, uint8_t selection);
+static void vdagent_request_clipboard(spiceTerm *vt, uint8_t selection);
 
 static void
 print_usage(const char *msg)
@@ -1326,135 +1326,6 @@ spiceterm_respond_unichar2(spiceTerm *vt, gunichar2 uc)
 }
 
 static void
-spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
-{
-    DPRINTF(1, "mask=%08x x=%d y=%d", buttons, x ,y);
-
-    static int last_mask = 0;
-    static int sel_start_pos = 0;
-    static int sel_end_pos = 0;
-    static int button2_released = 1;
-
-    int i;
-    int cx = x/8;
-    int cy = y/16;
-
-    if (cx < 0) cx = 0;
-    if (cx >= vt->width) cx = vt->width - 1;
-    if (cy < 0) cy = 0;
-    if (cy >= vt->height) cy = vt->height - 1;
-
-    if (vt->report_mouse && buttons != last_mask) {
-        last_mask = buttons;
-        if (buttons & 2) {
-            mouse_report(vt, 0, cx, cy);
-        }
-        if (buttons & 4) {
-            mouse_report (vt, 1, cx, cy);
-        }
-        if (buttons & 8) {
-            mouse_report(vt, 2, cx, cy);
-        }
-        if(!buttons) {
-            mouse_report(vt, 3, cx, cy);
-        }
-    }
-
-    if (buttons & 4) {
-
-
-        if(button2_released) {
-
-            if (1) { // fixme:
-                vdagent_request_clipboard(vt);
-            } else if (vt->selection) {
-                int i;
-                for(i = 0; i < vt->selection_len; i++) {
-                    spiceterm_respond_unichar2(vt, vt->selection[i]);
-                }
-                spiceterm_update_watch_mask(vt, TRUE);
-                if (vt->y_displ != vt->y_base) {
-                    vt->y_displ = vt->y_base;
-                    spiceterm_refresh(vt);
-                }
-            }
-        }
-
-        button2_released = 0;
-    } else {
-        button2_released = 1;
-    }
-
-    if (buttons & 2) {
-        int pos = cy*vt->width + cx;
-
-        // code borrowed from libvncserver (VNCconsole.c)
-
-        if (!vt->mark_active) {
-
-            spiceterm_unselect_all(vt);
-
-            vt->mark_active = 1;
-            sel_start_pos = sel_end_pos = pos;
-            spiceterm_toggle_marked_cell(vt, pos);
-
-        } else {
-
-            if (pos != sel_end_pos) {
-                if (pos > sel_end_pos) {
-                    cx = sel_end_pos; cy=pos;
-                } else {
-                    cx=pos; cy=sel_end_pos;
-                }
-
-                if (cx < sel_start_pos) {
-                    if (cy < sel_start_pos) cy--;
-                } else {
-                    cx++;
-                }
-
-                while (cx <= cy) {
-                    spiceterm_toggle_marked_cell(vt, cx);
-                    cx++;
-                }
-
-                sel_end_pos = pos;
-            }
-        }
-
-    } else if (vt->mark_active) {
-        vt->mark_active = 0;
-
-        if (sel_start_pos > sel_end_pos) {
-            int tmp = sel_start_pos - 1;
-            sel_start_pos = sel_end_pos;
-            sel_end_pos = tmp;
-        }
-
-        int len = sel_end_pos - sel_start_pos + 1;
-
-        if (vt->selection) free (vt->selection);
-        vt->selection = (gunichar2 *)malloc (len*sizeof(gunichar2));
-        vt->selection_len = len;
-
-        for (i = 0; i < len; i++) {
-            int pos = sel_start_pos + i;
-            int x = pos % vt->width;
-            int y1 = ((pos / vt->width) + vt->y_displ) % vt->total_height;
-            TextCell *c = &vt->cells[y1*vt->width + x];
-            vt->selection[i] = c->ch;
-            c++;
-        }
-
-        DPRINTF(1, "selection length = %d", vt->selection_len);
-
-        vdagent_grab_clipboard(vt);
-        // fixme: tell client we have something seletced
-        //rfbGotXCutText (vt->screen, sel_latin1, len);
-    }
-}
-
-static void
 my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
     // spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
@@ -1622,6 +1493,134 @@ static unsigned char vdagent_write_buffer[VDAGENT_WBUF_SIZE];
 static int vdagent_write_buffer_pos = 0;
 static int agent_owns_clipboard[256] = { 0, };
 
+static void
+spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
+{
+    DPRINTF(1, "mask=%08x x=%d y=%d", buttons, x ,y);
+
+    static int last_mask = 0;
+    static int sel_start_pos = 0;
+    static int sel_end_pos = 0;
+    static int button2_released = 1;
+
+    int i;
+    int cx = x/8;
+    int cy = y/16;
+
+    if (cx < 0) cx = 0;
+    if (cx >= vt->width) cx = vt->width - 1;
+    if (cy < 0) cy = 0;
+    if (cy >= vt->height) cy = vt->height - 1;
+
+    if (vt->report_mouse && buttons != last_mask) {
+        last_mask = buttons;
+        if (buttons & 2) {
+            mouse_report(vt, 0, cx, cy);
+        }
+        if (buttons & 4) {
+            mouse_report (vt, 1, cx, cy);
+        }
+        if (buttons & 8) {
+            mouse_report(vt, 2, cx, cy);
+        }
+        if(!buttons) {
+            mouse_report(vt, 3, cx, cy);
+        }
+    }
+
+    if (buttons & 4) {
+
+        if(button2_released) {
+
+            if (agent_owns_clipboard[VD_AGENT_CLIPBOARD_SELECTION_PRIMARY]) {
+                if (vt->selection) {
+                    int i;
+                    for(i = 0; i < vt->selection_len; i++) {
+                        spiceterm_respond_unichar2(vt, vt->selection[i]);
+                    }
+                    spiceterm_update_watch_mask(vt, TRUE);
+                    if (vt->y_displ != vt->y_base) {
+                        vt->y_displ = vt->y_base;
+                        spiceterm_refresh(vt);
+                    }
+                }
+            } else {
+                vdagent_request_clipboard(vt, VD_AGENT_CLIPBOARD_SELECTION_PRIMARY);
+            } 
+        }
+
+        button2_released = 0;
+    } else {
+        button2_released = 1;
+    }
+
+    if (buttons & 2) {
+        int pos = cy*vt->width + cx;
+
+        // code borrowed from libvncserver (VNCconsole.c)
+
+        if (!vt->mark_active) {
+
+            spiceterm_unselect_all(vt);
+
+            vt->mark_active = 1;
+            sel_start_pos = sel_end_pos = pos;
+            spiceterm_toggle_marked_cell(vt, pos);
+
+        } else {
+
+            if (pos != sel_end_pos) {
+                if (pos > sel_end_pos) {
+                    cx = sel_end_pos; cy=pos;
+                } else {
+                    cx=pos; cy=sel_end_pos;
+                }
+
+                if (cx < sel_start_pos) {
+                    if (cy < sel_start_pos) cy--;
+                } else {
+                    cx++;
+                }
+
+                while (cx <= cy) {
+                    spiceterm_toggle_marked_cell(vt, cx);
+                    cx++;
+                }
+
+                sel_end_pos = pos;
+            }
+        }
+
+    } else if (vt->mark_active) {
+        vt->mark_active = 0;
+
+        if (sel_start_pos > sel_end_pos) {
+            int tmp = sel_start_pos - 1;
+            sel_start_pos = sel_end_pos;
+            sel_end_pos = tmp;
+        }
+
+        int len = sel_end_pos - sel_start_pos + 1;
+
+        if (vt->selection) free (vt->selection);
+        vt->selection = (gunichar2 *)malloc (len*sizeof(gunichar2));
+        vt->selection_len = len;
+
+        for (i = 0; i < len; i++) {
+            int pos = sel_start_pos + i;
+            int x = pos % vt->width;
+            int y1 = ((pos / vt->width) + vt->y_displ) % vt->total_height;
+            TextCell *c = &vt->cells[y1*vt->width + x];
+            vt->selection[i] = c->ch;
+            c++;
+        }
+
+        DPRINTF(1, "selection length = %d", vt->selection_len);
+
+        vdagent_grab_clipboard(vt, VD_AGENT_CLIPBOARD_SELECTION_PRIMARY);
+    }
+}
+
 static void vdagent_send_capabilities(spiceTerm *vt, uint32_t request)
 {
     VDAgentAnnounceCapabilities *caps;
@@ -1672,20 +1671,16 @@ dump_message(unsigned char *buf, int size)
         printf("%d  %02X\n", i, buf[i]);
     }
 
-    exit(0);
+    // exit(0);
 }
 
-static void vdagent_grab_clipboard(spiceTerm *vt)
+static void vdagent_grab_clipboard(spiceTerm *vt, uint8_t selection)
 {
     uint32_t size;
     
-    DPRINTF(0, "GRAB");
-
-    uint8_t selection = VD_AGENT_CLIPBOARD_SELECTION_PRIMARY; // fixme?
-
     agent_owns_clipboard[selection] = 1;
 
-    size = 4; // fixme: HACK, because sizeof(VDAgentClipboardGrab) == 0;
+    size = 8;
 
     int msg_size =  sizeof(VDIChunkHeader) + sizeof(VDAgentMessage) + size;
     g_assert((vdagent_write_buffer_pos + msg_size) < VDAGENT_WBUF_SIZE);
@@ -1697,9 +1692,9 @@ static void vdagent_grab_clipboard(spiceTerm *vt)
 
     VDIChunkHeader *hdr = (VDIChunkHeader *)buf;
     VDAgentMessage *msg = (VDAgentMessage *)&hdr[1];
-    VDAgentClipboardGrab *grab = (VDAgentClipboardGrab *)&msg[1];
-    *((uint32_t *)grab) = 0;
+    uint8_t *grab = (uint8_t *)&msg[1];
     *((uint8_t *)grab) = selection;
+    *((uint32_t *)(grab + 4)) = VD_AGENT_CLIPBOARD_UTF8_TEXT;
 
     hdr->port = VDP_CLIENT_PORT;
     hdr->size = sizeof(VDAgentMessage) + size;
@@ -1711,18 +1706,13 @@ static void vdagent_grab_clipboard(spiceTerm *vt)
 
     if (0) dump_message(buf, msg_size);
 
-    
     spice_server_char_device_wakeup(&vt->vdagent_sin);
 }
 
-static void vdagent_request_clipboard(spiceTerm *vt)
+static void vdagent_request_clipboard(spiceTerm *vt, uint8_t selection)
 {
     uint32_t size;
     
-    DPRINTF(0, "REQUEST");
-
-    uint8_t selection = VD_AGENT_CLIPBOARD_SELECTION_PRIMARY; // fixme?
-
     agent_owns_clipboard[selection] = 1;
 
     size = 4 + sizeof(VDAgentClipboardRequest);
@@ -1752,7 +1742,59 @@ static void vdagent_request_clipboard(spiceTerm *vt)
 
     if (0) dump_message(buf, msg_size);
 
+    spice_server_char_device_wakeup(&vt->vdagent_sin);
+}
+
+static void vdagent_send_clipboard(spiceTerm *vt, uint8_t selection)
+{
+    uint32_t size;
     
+    if (selection != VD_AGENT_CLIPBOARD_SELECTION_PRIMARY) {
+        fprintf(stderr, "clipboard select %d is not supported\n", selection);
+        return;
+    }
+
+    gchar *sel_data;
+    glong sel_len;
+    if (vt->utf8) {
+        sel_data = g_utf16_to_utf8(vt->selection, vt->selection_len, NULL, &sel_len, NULL);
+    } else {
+        sel_len = vt->selection_len;
+        sel_data = g_malloc(sel_len);
+        int i;
+        for (i = 0; i < sel_len; i++) { sel_data[i] =  (char)vt->selection[i]; }
+        sel_data[sel_len] = 0;
+    }
+
+    size = 8 + sel_len;
+
+    int msg_size =  sizeof(VDIChunkHeader) + sizeof(VDAgentMessage) + size;
+    g_assert((vdagent_write_buffer_pos + msg_size) < VDAGENT_WBUF_SIZE);
+
+    unsigned char *buf = vdagent_write_buffer + vdagent_write_buffer_pos;
+    vdagent_write_buffer_pos += msg_size;
+
+    memset(buf, 0, msg_size);
+   
+    VDIChunkHeader *hdr = (VDIChunkHeader *)buf;
+    VDAgentMessage *msg = (VDAgentMessage *)&hdr[1];
+    uint8_t *data = (uint8_t *)&msg[1];
+    *((uint8_t *)data) = selection;
+    data += 4;
+    *((uint32_t *)data) = VD_AGENT_CLIPBOARD_UTF8_TEXT;
+    data += 4;
+
+    memcpy(data, sel_data, sel_len);
+    g_free(sel_data);
+
+    hdr->port = VDP_CLIENT_PORT;
+    hdr->size = sizeof(VDAgentMessage) + size;
+
+    msg->protocol = VD_AGENT_PROTOCOL;
+    msg->type = VD_AGENT_CLIPBOARD;
+    msg->opaque = 0;
+    msg->size = size;
+
     spice_server_char_device_wakeup(&vt->vdagent_sin);
 }
 
@@ -1777,12 +1819,12 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
     }
     case VD_AGENT_ANNOUNCE_CAPABILITIES: {
         VDAgentAnnounceCapabilities *caps = (VDAgentAnnounceCapabilities *)&msg[1];
-        DPRINTF(0, "VD_AGENT_ANNOUNCE_CAPABILITIES %d", caps->request);
+        DPRINTF(1, "VD_AGENT_ANNOUNCE_CAPABILITIES %d", caps->request);
         int i;
         
         int caps_size = VD_AGENT_CAPS_SIZE_FROM_MSG_SIZE(hdr->size);
         for (i = 0; i < VD_AGENT_END_CAP; i++) {
-            DPRINTF(0, "CAPABILITIES %d %d", i, VD_AGENT_HAS_CAPABILITY(caps->caps, caps_size, i));
+            DPRINTF(1, "CAPABILITIES %d %d", i, VD_AGENT_HAS_CAPABILITY(caps->caps, caps_size, i));
         }
 
         vdagent_send_capabilities(vt, 0);
@@ -1791,13 +1833,19 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
     case VD_AGENT_CLIPBOARD_GRAB: {
         VDAgentClipboardGrab *grab = (VDAgentClipboardGrab *)&msg[1];
         uint8_t selection = *((uint8_t *)grab);
-        DPRINTF(0, "VD_AGENT_CLIPBOARD_GRAB %d", selection);
+        DPRINTF(1, "VD_AGENT_CLIPBOARD_GRAB %d", selection);
         agent_owns_clipboard[selection] = 0;
         break;
     }
     case VD_AGENT_CLIPBOARD_REQUEST: {
-        DPRINTF(0, "VD_AGENT_CLIPBOARD_REQUEST");
-         
+        uint8_t *req = (uint8_t *)&msg[1];
+        uint8_t selection = *((uint8_t *)req);
+        uint32_t type = *((uint32_t *)(req + 4));
+
+        DPRINTF(1, "VD_AGENT_CLIPBOARD_REQUEST %d %d", selection, type);
+
+        vdagent_send_clipboard(vt, selection);
+        
         break;
     }
     case VD_AGENT_CLIPBOARD: {
@@ -1805,7 +1853,7 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
         uint8_t selection = data[0];
         uint32_t type = *(uint32_t *)(data + 4);
         int size = msg->size - 8;
-        DPRINTF(0, "VD_AGENT_CLIPBOARD %d %d %d", selection, type, size);
+        DPRINTF(1, "VD_AGENT_CLIPBOARD %d %d %d", selection, type, size);
 
         if (type == VD_AGENT_CLIPBOARD_UTF8_TEXT) {
             int i;
@@ -1821,8 +1869,11 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
         break;
     }
     case VD_AGENT_CLIPBOARD_RELEASE: {
-        DPRINTF(0, "VD_AGENT_CLIPBOARD_RELEASE");
-         
+        uint8_t *data = (uint8_t *)&msg[1];
+        uint8_t selection = data[0];
+        
+        DPRINTF(0, "VD_AGENT_CLIPBOARD_RELEASE %d", selection);
+     
         break;
     }
     case VD_AGENT_MONITORS_CONFIG:
