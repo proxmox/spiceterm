@@ -90,9 +90,6 @@ spice_screen_destroy_update(SimpleSpiceUpdate *update)
     g_free(update);
 }
 
-#define DEFAULT_WIDTH 640
-#define DEFAULT_HEIGHT 320
-
 static int unique = 0x0ffff + 1;
 
 static void 
@@ -350,6 +347,22 @@ create_primary_surface(SpiceScreen *spice_screen, uint32_t width,
     qxl_worker->create_primary_surface(qxl_worker, 0, &surface);
 }
 
+void 
+spice_screen_resize(SpiceScreen *spice_screen, uint32_t width,
+                    uint32_t height)
+{
+    QXLWorker *qxl_worker = spice_screen->qxl_worker;
+
+    if (spice_screen->width == width && spice_screen->height == height) {
+        return;
+    }
+
+    qxl_worker->destroy_primary_surface(qxl_worker, 0);
+
+    create_primary_surface(spice_screen, width, height);
+}
+                       
+
 QXLDevMemSlot slot = {
     .slot_group_id = MEM_SLOT_GROUP_ID,
     .slot_id = 0,
@@ -371,7 +384,7 @@ attache_worker(QXLInstance *qin, QXLWorker *_qxl_worker)
  
     spice_screen->qxl_worker = _qxl_worker;
     spice_screen->qxl_worker->add_memslot(spice_screen->qxl_worker, &slot);
-    create_primary_surface(spice_screen, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    create_primary_surface(spice_screen, spice_screen->width, spice_screen->height);
     spice_screen->qxl_worker->start(spice_screen->qxl_worker);
 }
 
@@ -668,11 +681,14 @@ spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch,
 }
 
 SpiceScreen *
-spice_screen_new(SpiceCoreInterface *core, guint timeout)
+spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guint timeout)
 {
     int port = 5912;
     SpiceScreen *spice_screen = g_new0(SpiceScreen, 1);
     SpiceServer* server = spice_server_new();
+
+    spice_screen->width = width;
+    spice_screen->height = height;
 
     spice_screen->command_cond = g_cond_new();
     spice_screen->command_mutex = g_mutex_new();

@@ -79,6 +79,8 @@ unsigned char color_table[] = { 0, 4, 2, 6, 1, 5, 3, 7,
 				8,12,10,14, 9,13,11,15 };
 
 
+static void spiceterm_resize(spiceTerm *vt, uint32_t width, uint32_t height);
+
 static void vdagent_grab_clipboard(spiceTerm *vt, uint8_t selection);
 static void vdagent_request_clipboard(spiceTerm *vt, uint8_t selection);
 
@@ -1444,7 +1446,7 @@ my_kbd_push_keyval(SpiceKbdInstance *sin, uint32_t keySym, int flags)
 
             if (vt->y_displ != vt->y_base) {
                 vt->y_displ = vt->y_base;
-                spiceterm_refresh (vt);
+                spiceterm_refresh(vt);
             }
 
             if (esc) {
@@ -1619,6 +1621,38 @@ spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
 
         vdagent_grab_clipboard(vt, VD_AGENT_CLIPBOARD_SELECTION_PRIMARY);
     }
+}
+
+static void  
+vdagent_reply(spiceTerm *vt, uint32_t type, uint32_t error)
+{
+    uint32_t size;
+    
+    size = sizeof(VDAgentReply);
+
+    int msg_size =  sizeof(VDIChunkHeader) + sizeof(VDAgentMessage) + size;
+    g_assert((vdagent_write_buffer_pos + msg_size) < VDAGENT_WBUF_SIZE);
+
+    unsigned char *buf = vdagent_write_buffer + vdagent_write_buffer_pos;
+    vdagent_write_buffer_pos += msg_size;
+
+    memset(buf, 0, msg_size);
+
+    VDIChunkHeader *hdr = (VDIChunkHeader *)buf;
+    VDAgentMessage *msg = (VDAgentMessage *)&hdr[1];
+    VDAgentReply *reply = (VDAgentReply *)&msg[1];
+    reply->type = type;
+    reply->error = error;
+
+    hdr->port = VDP_CLIENT_PORT;
+    hdr->size = sizeof(VDAgentMessage) + size;
+
+    msg->protocol = VD_AGENT_PROTOCOL;
+    msg->type = VD_AGENT_REPLY;
+    msg->opaque = 0;
+    msg->size = size;
+
+    spice_server_char_device_wakeup(&vt->vdagent_sin);
 }
 
 static void vdagent_send_capabilities(spiceTerm *vt, uint32_t request)
@@ -1876,9 +1910,17 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
      
         break;
     }
-    case VD_AGENT_MONITORS_CONFIG:
-        /* ignore for now */
+    case VD_AGENT_MONITORS_CONFIG: {
+        VDAgentMonitorsConfig *list = (VDAgentMonitorsConfig *)&msg[1];
+        g_assert(list->num_of_monitors > 0);
+        DPRINTF(0, "VD_AGENT_MONITORS_CONFIG %d %d %d", list->num_of_monitors, 
+                list->monitors[0].width, list->monitors[0].height);
+        
+        spiceterm_resize(vt, list->monitors[0].width, list->monitors[0].height);
+
+        vdagent_reply(vt, VD_AGENT_MONITORS_CONFIG, VD_AGENT_SUCCESS);
         break;
+    }
     default:
         DPRINTF(0, "got uknown vdagent message type %d\n", msg->type);
     }
@@ -1889,7 +1931,7 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
 static int
 vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
 {
-    DPRINTF(0, "%d %d", len,  vdagent_write_buffer_pos);
+    DPRINTF(1, "%d %d", len,  vdagent_write_buffer_pos);
     g_assert(len >= 8);
 
     if (!vdagent_write_buffer_pos) {
@@ -1899,13 +1941,12 @@ vmc_read(SpiceCharDeviceInstance *sin, uint8_t *buf, int len)
     int size = (len >= vdagent_write_buffer_pos) ? vdagent_write_buffer_pos : len;
     memcpy(buf, vdagent_write_buffer, size);
     if (size < vdagent_write_buffer_pos) {
-        DPRINTF(0, "MOVE %d", size);
         memmove(vdagent_write_buffer, vdagent_write_buffer + size, 
                 vdagent_write_buffer_pos - size);
     }
     vdagent_write_buffer_pos -= size;
 
-    DPRINTF(0, "RET %d %d", size,  vdagent_write_buffer_pos);
+    DPRINTF(1, "RET %d %d", size,  vdagent_write_buffer_pos);
     return size;
 }
 
@@ -1925,36 +1966,16 @@ static SpiceCharDeviceInterface my_vdagent_sif = {
     .read               = vmc_read,
 };
 
-static spiceTerm *
-create_spiceterm(int argc, char** argv, int maxx, int maxy, guint timeout)
+static void
+init_spiceterm(spiceTerm *vt, uint32_t width, uint32_t height)
 {
     int i;
 
-    SpiceScreen *spice_screen;
+    g_assert(vt != NULL);
+    g_assert(vt->screen != NULL);
 
-    SpiceCoreInterface *core = basic_event_loop_init();
-    spice_screen = spice_screen_new(core, timeout);
-    //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
-
-    spiceTerm *vt = (spiceTerm *)calloc (sizeof(spiceTerm), 1);
-
-    vt->keyboard_sin.base.sif = &my_keyboard_sif.base;
-    spice_server_add_interface(spice_screen->server, &vt->keyboard_sin.base);
-
-    vt->vdagent_sin.base.sif = &my_vdagent_sif.base;
-    vt->vdagent_sin.subtype = "vdagent";
-    spice_server_add_interface(spice_screen->server, &vt->vdagent_sin.base);
-
-    // screen->setXCutText = spiceterm_set_xcut_text;
-    // screen->ptrAddEvent = spiceterm_pointer_event;
-    // screen->newClientHook = new_client;
-    // screen->desktopName = "SPICE Command Terminal";
-
-    vt->maxx = spice_screen->width;
-    vt->maxy = spice_screen->height;
-
-    vt->width = vt->maxx / 8;
-    vt->height = vt->maxy / 16;
+    vt->width = width / 8;
+    vt->height = height / 16;
 
     vt->total_height = vt->height * 20;
     vt->scroll_height = 0;
@@ -1980,16 +2001,67 @@ create_spiceterm(int argc, char** argv, int maxx, int maxy, guint timeout)
 
     vt->cur_attrib = vt->default_attrib;
 
+    if (vt->cells) {
+        vt->cx = 0;
+        vt->cy = 0;
+        vt->cx_saved = 0;
+        vt->cy_saved = 0;
+        g_free(vt->cells);
+    }
+ 
     vt->cells = (TextCell *)calloc (sizeof (TextCell), vt->width*vt->total_height);
 
     for (i = 0; i < vt->width*vt->total_height; i++) {
         vt->cells[i].ch = ' ';
         vt->cells[i].attrib = vt->default_attrib;
     }
+   
+    if (vt->altcells) {
+        g_free(vt->altcells);
+    }
 
     vt->altcells = (TextCell *)calloc (sizeof (TextCell), vt->width*vt->height);
+}
 
+static void
+spiceterm_resize(spiceTerm *vt, uint32_t width, uint32_t height)
+{
+    DPRINTF(0, "width=%u height=%u", width, height);
+
+    if (vt->screen->width == width && vt->screen->height == height) {
+        return;
+    }
+
+    spice_screen_resize(vt->screen, width, height);
+
+    init_spiceterm(vt, width, height);
+
+    struct winsize dimensions;
+    dimensions.ws_col = vt->width;
+    dimensions.ws_row = vt->height;
+
+    ioctl(vt->pty, TIOCSWINSZ, &dimensions);
+}
+
+static spiceTerm *
+create_spiceterm(int argc, char** argv, uint32_t maxx, uint32_t maxy, guint timeout)
+{
+    SpiceCoreInterface *core = basic_event_loop_init();
+    SpiceScreen *spice_screen = spice_screen_new(core, maxx, maxy, timeout);
+
+    //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
+
+    spiceTerm *vt = (spiceTerm *)calloc (sizeof(spiceTerm), 1);
+
+    vt->keyboard_sin.base.sif = &my_keyboard_sif.base;
+    spice_server_add_interface(spice_screen->server, &vt->keyboard_sin.base);
+
+    vt->vdagent_sin.base.sif = &my_vdagent_sif.base;
+    vt->vdagent_sin.subtype = "vdagent";
+    spice_server_add_interface(spice_screen->server, &vt->vdagent_sin.base);
     vt->screen = spice_screen;
+
+    init_spiceterm(vt, maxx, maxy);
 
     return vt;
 }
@@ -2109,6 +2181,8 @@ main (int argc, char** argv)
         perror ("Error: fork failed\n");
         exit (-1);
     }
+
+    vt->pty = master;
 
     /* watch for errors - we need to use glib directly because spice
      * does not have SPICE_WATCH_EVENT for this */

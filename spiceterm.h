@@ -58,8 +58,9 @@ struct SpiceScreen {
     void (*on_client_disconnected)(SpiceScreen *spice_screen);
 };
 
-SpiceScreen* spice_screen_new(SpiceCoreInterface* core, guint timeout);
+SpiceScreen* spice_screen_new(SpiceCoreInterface* core, uint32_t width, uint32_t height, guint timeout);
 
+void spice_screen_resize(SpiceScreen *spice_screen, uint32_t width, uint32_t height);
 void spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib);
 void spice_screen_scroll(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2, int src_x, int src_y);
 void spice_screen_clear(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2);
@@ -67,8 +68,7 @@ uint32_t spice_screen_get_width(void);
 uint32_t spice_screen_get_height(void);
 
 typedef struct spiceTerm {
-    int maxx;
-    int maxy;
+    int pty; // pty file descriptor
 
     int width;
     int height;
