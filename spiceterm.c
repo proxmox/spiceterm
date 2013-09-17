@@ -539,7 +539,7 @@ spiceterm_set_alternate_buffer(spiceTerm *vt, int on_off)
         /* clear screen */
         for (y = 0; y <= vt->height; y++) {
             for (x = 0; x < vt->width; x++) {
-                spiceterm_clear_xy(vt, x, y);
+                //     spiceterm_clear_xy(vt, x, y);
             }
         }
 
