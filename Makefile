@@ -4,6 +4,9 @@ PROGRAMS=spiceterm
 HEADERS=translations.h event_loop.h glyphs.h spiceterm.h
 SOURCES=screen.c event_loop.c spiceterm.c
 
+#export G_MESSAGES_DEBUG=all 
+#export SPICE_DEBUG=1
+
 all: ${PROGRAMS}
 
 spiceterm: ${SOURCES} ${HEADERS} spiceterm.c 
