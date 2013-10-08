@@ -118,6 +118,8 @@ simple_set_release_info(QXLReleaseInfo *info, intptr_t ptr)
 static void 
 push_command(SpiceScreen *spice_screen, QXLCommandExt *ext)
 {
+    int need_wakeup = 1;
+
     g_mutex_lock(spice_screen->command_mutex);
 
     while (spice_screen->commands_end - spice_screen->commands_start >= COMMANDS_SIZE) {
@@ -126,12 +128,19 @@ push_command(SpiceScreen *spice_screen, QXLCommandExt *ext)
 
     g_assert(spice_screen->commands_end - spice_screen->commands_start < COMMANDS_SIZE);
 
+    if ((spice_screen->commands_end - spice_screen->commands_start) > 0) {
+        need_wakeup = 0;
+    }
+
     spice_screen->commands[spice_screen->commands_end % COMMANDS_SIZE] = ext;
     spice_screen->commands_end++;
 
+    if (need_wakeup) {
+        spice_screen->qxl_worker->wakeup(spice_screen->qxl_worker);
+    }
+
     g_mutex_unlock(spice_screen->command_mutex);
 
-    spice_screen->qxl_worker->wakeup(spice_screen->qxl_worker);
 }
 
 /* bitmap are freed, so they must be allocated with g_malloc */
