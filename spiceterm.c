@@ -2031,11 +2031,14 @@ init_spiceterm(spiceTerm *vt, uint32_t width, uint32_t height)
 static void
 spiceterm_resize(spiceTerm *vt, uint32_t width, uint32_t height)
 {
-    DPRINTF(0, "width=%u height=%u", width, height);
-
+    width = (width/8)*8;
+    height = (height/16)*16;
+    
     if (vt->screen->width == width && vt->screen->height == height) {
         return;
     }
+
+    DPRINTF(0, "width=%u height=%u", width, height);
 
     spice_screen_resize(vt->screen, width, height);
 
@@ -2151,7 +2154,7 @@ main (int argc, char** argv)
 
     if (0) print_usage(NULL); // fixme:
 
-    spiceTerm *vt = create_spiceterm (argc, argv, 745, 400, 10);
+    spiceTerm *vt = create_spiceterm (argc, argv, 744, 400, 10);
 
     setlocale(LC_ALL, ""); // set from environment
 
