@@ -350,10 +350,15 @@ create_primary_surface(SpiceScreen *spice_screen, uint32_t width,
     QXLWorker *qxl_worker = spice_screen->qxl_worker;
     QXLDevSurfaceCreate surface = { 0, };
 
-    g_assert(height <= MAX_HEIGHT);
-    g_assert(width <= MAX_WIDTH);
     g_assert(height > 0);
     g_assert(width > 0);
+
+    if (height > MAX_HEIGHT)
+        height = MAX_HEIGHT;
+
+    if (width > MAX_WIDTH)
+        width = MAX_WIDTH;
+
 
     surface.format     = SPICE_SURFACE_FMT_32_xRGB;
     surface.width      = spice_screen->primary_width = width;
