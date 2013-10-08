@@ -359,7 +359,6 @@ create_primary_surface(SpiceScreen *spice_screen, uint32_t width,
     if (width > MAX_WIDTH)
         width = MAX_WIDTH;
 
-
     surface.format     = SPICE_SURFACE_FMT_32_xRGB;
     surface.width      = spice_screen->primary_width = width;
     surface.height     = spice_screen->primary_height = height;
@@ -390,6 +389,8 @@ spice_screen_resize(SpiceScreen *spice_screen, uint32_t width,
     qxl_worker->destroy_primary_surface(qxl_worker, 0);
 
     create_primary_surface(spice_screen, width, height);
+
+    spice_screen_clear(spice_screen, 0, 0, width, height);
 }
                        
 
