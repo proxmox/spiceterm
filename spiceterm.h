@@ -26,6 +26,11 @@ typedef struct TextCell {
 
 typedef struct SpiceScreen SpiceScreen;
 
+typedef struct CachedImage {
+    uint8_t *bitmap;
+    int cache_id;
+} CachedImage;
+
 struct SpiceScreen {
     SpiceCoreInterface *core;
     SpiceServer *server;
@@ -52,6 +57,9 @@ struct SpiceScreen {
     int commands_end;
     int commands_start;
     struct QXLCommandExt* commands[COMMANDS_SIZE];
+
+    //cache for glyphs bitmaps
+    GHashTable *image_cache;
 
     // callbacks
     void (*on_client_connected)(SpiceScreen *spice_screen);

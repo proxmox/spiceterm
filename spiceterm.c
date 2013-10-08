@@ -2055,6 +2055,8 @@ create_spiceterm(int argc, char** argv, uint32_t maxx, uint32_t maxy, guint time
     SpiceScreen *spice_screen = spice_screen_new(core, maxx, maxy, timeout);
 
     //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
+    
+    spice_screen->image_cache = g_hash_table_new(g_int_hash, g_int_equal);
 
     spiceTerm *vt = (spiceTerm *)calloc (sizeof(spiceTerm), 1);
 

@@ -70,10 +70,11 @@ int default_blu[] = {0x00,0x00,0x00,0x00,0xaa,0xaa,0xaa,0xaa,
 /* Parts cribbed from spice-display.h/.c/qxl.c */
 
 typedef struct SimpleSpiceUpdate {
-    QXLCommandExt ext; // first
+    QXLCommandExt ext; // needs to be first member
     QXLDrawable drawable;
     QXLImage image;
     uint8_t *bitmap;
+    int cache_id; // do not free bitmap if cache_id != 0
 } SimpleSpiceUpdate;
 
 static void 
@@ -86,7 +87,10 @@ spice_screen_destroy_update(SimpleSpiceUpdate *update)
         uint8_t *ptr = (uint8_t*)update->drawable.clip.data;
         free(ptr);
     }
-    g_free(update->bitmap);
+    if (update->bitmap && !update->cache_id) {
+        g_free(update->bitmap);
+    }
+
     g_free(update);
 }
 
@@ -166,6 +170,7 @@ spice_screen_update_from_bitmap_cmd(uint32_t surface_id, QXLRect bbox, uint8_t *
     if (cache_id) {
         QXL_SET_IMAGE_ID(image, QXL_IMAGE_GROUP_DEVICE, cache_id);
         image->descriptor.flags = SPICE_IMAGE_FLAGS_CACHE_ME;
+        update->cache_id = cache_id;
     } else {
         QXL_SET_IMAGE_ID(image, QXL_IMAGE_GROUP_DEVICE, ++unique);
     }
@@ -189,14 +194,18 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
 {
     int top, left;
     uint8_t *dst;
-    uint8_t *bitmap;
+    uint8_t *bitmap = NULL;
     int bw, bh;
     int i, j;
     QXLRect bbox;
     int cache_id = 0;
+    CachedImage *ce;
 
     if (!uline && c < 256) {
         cache_id = ((fg << 12) | (bg << 8) | (c & 255)) & 0x0ffff;
+        if ((ce = (CachedImage *)g_hash_table_lookup(spice_screen->image_cache, &cache_id))) {
+            bitmap = ce->bitmap;
+        }
     }
 
     left = x*8;
@@ -205,42 +214,48 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
     bw       = 8;
     bh       = 16;
 
-    bitmap = dst = g_malloc(bw * bh * 4);
+    if (!bitmap) {
+        bitmap = dst = g_malloc(bw * bh * 4);
+        
+        unsigned char *data = vt_font_data + c*16;
+        unsigned char d = *data;
 
-    unsigned char *data = vt_font_data + c*16;
-    unsigned char d = *data;
+        g_assert(fg >= 0 && fg < 16);
+        g_assert(bg >= 0 && bg < 16);
 
-    g_assert(fg >= 0 && fg < 16);
-    g_assert(bg >= 0 && bg < 16);
+        unsigned char fgc_red = default_red[fg];
+        unsigned char fgc_blue = default_blu[fg];
+        unsigned char fgc_green = default_grn[fg];
+        unsigned char bgc_red = default_red[bg];
+        unsigned char bgc_blue = default_blu[bg];
+        unsigned char bgc_green = default_grn[bg];
 
-    unsigned char fgc_red = default_red[fg];
-    unsigned char fgc_blue = default_blu[fg];
-    unsigned char fgc_green = default_grn[fg];
-    unsigned char bgc_red = default_red[bg];
-    unsigned char bgc_blue = default_blu[bg];
-    unsigned char bgc_green = default_grn[bg];
-
-    for (j = 0; j < 16; j++) {
-        gboolean ul = (j == 14) && uline;
-        for (i = 0; i < 8; i++) {
-            if (i == 0) {
-                d=*data;
-                data++;
+        for (j = 0; j < 16; j++) {
+            gboolean ul = (j == 14) && uline;
+            for (i = 0; i < 8; i++) {
+                if (i == 0) {
+                    d=*data;
+                    data++;
+                }
+                if (ul || d&0x80) {
+                    *(dst) = fgc_blue;
+                    *(dst+1) = fgc_green;
+                    *(dst+2) = fgc_red;
+                    *(dst+3) = 0;
+                } else {
+                    *(dst) = bgc_blue;
+                    *(dst+1) = bgc_green;
+                    *(dst+2) = bgc_red;
+                    *(dst+3) = 0;
+                }
+                d<<=1;
+                dst += 4;
             }
-            if (ul || d&0x80) {
-                 *(dst) = fgc_blue;
-                 *(dst+1) = fgc_green;
-                 *(dst+2) = fgc_red;
-                 *(dst+3) = 0;
-            } else {
-                 *(dst) = bgc_blue;
-                 *(dst+1) = bgc_green;
-                 *(dst+2) = bgc_red;
-                 *(dst+3) = 0;
-            }
-            d<<=1;
-            dst += 4;
         }
+        ce = g_new(CachedImage, 1);
+        ce->cache_id = cache_id;
+        ce->bitmap = bitmap;
+        g_hash_table_insert(spice_screen->image_cache, &ce->cache_id, ce);
     }
 
     bbox.left = left; bbox.top = top;
