@@ -21,8 +21,8 @@ typedef struct TextCell {
 } TextCell;
 
 #define COMMANDS_SIZE (1024*10)
-#define MAX_HEIGHT 2048
-#define MAX_WIDTH 2048
+#define MAX_HEIGHT 1440
+#define MAX_WIDTH 2560
 
 typedef struct SpiceScreen SpiceScreen;
 
