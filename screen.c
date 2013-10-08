@@ -165,6 +165,7 @@ spice_screen_update_from_bitmap_cmd(uint32_t surface_id, QXLRect bbox, uint8_t *
 
     if (cache_id) {
         QXL_SET_IMAGE_ID(image, QXL_IMAGE_GROUP_DEVICE, cache_id);
+        image->descriptor.flags = SPICE_IMAGE_FLAGS_CACHE_ME;
     } else {
         QXL_SET_IMAGE_ID(image, QXL_IMAGE_GROUP_DEVICE, ++unique);
     }
