@@ -55,9 +55,6 @@ static int debug = 0;
 
 #define MEM_SLOT_GROUP_ID 0
 
-#define NOTIFY_DISPLAY_BATCH (SINGLE_PART/2)
-#define NOTIFY_CURSOR_BATCH 10
-
 /* these colours are from linux kernel drivers/char/vt.c */
 /* the default colour table, for VGA+ colour systems */
 int default_red[] = {0x00,0xaa,0x00,0xaa,0x00,0xaa,0x00,0xaa,
@@ -535,41 +532,33 @@ cursor_init()
 static int 
 get_cursor_command(QXLInstance *qin, struct QXLCommandExt *ext)
 {
-    SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
+    //SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
     static int set = 1;
-    static int x = 0, y = 0;
+ 
     QXLCursorCmd *cursor_cmd;
     QXLCommandExt *cmd;
 
-    if (!spice_screen->cursor_notify) {
-        return FALSE;
-    }
-
-    spice_screen->cursor_notify--;
+    if (!set) return FALSE;
+    set = 0;
+  
+    
     cmd = calloc(sizeof(QXLCommandExt), 1);
     cursor_cmd = calloc(sizeof(QXLCursorCmd), 1);
 
     cursor_cmd->release_info.id = (unsigned long)cmd;
 
-    if (set) {
-        cursor_cmd->type = QXL_CURSOR_SET;
-        cursor_cmd->u.set.position.x = 0;
-        cursor_cmd->u.set.position.y = 0;
-        cursor_cmd->u.set.visible = TRUE;
-        cursor_cmd->u.set.shape = (unsigned long)&cursor;
-        // white rect as cursor
-        memset(cursor.data, 255, sizeof(cursor.data));
-        set = 0;
-    } else {
-        cursor_cmd->type = QXL_CURSOR_MOVE;
-        cursor_cmd->u.position.x = x++ % spice_screen->primary_width;
-        cursor_cmd->u.position.y = y++ % spice_screen->primary_height;
-    }
+    cursor_cmd->type = QXL_CURSOR_SET;
+    cursor_cmd->u.set.position.x = 0;
+    cursor_cmd->u.set.position.y = 0;
+    cursor_cmd->u.set.visible = TRUE;
+    cursor_cmd->u.set.shape = (unsigned long)&cursor;
+    // white rect as cursor
+    memset(cursor.data, 255, sizeof(cursor.data));
 
     cmd->cmd.data = (unsigned long)cursor_cmd;
     cmd->cmd.type = QXL_CMD_CURSOR;
     cmd->group_id = MEM_SLOT_GROUP_ID;
-    cmd->flags    = 0;
+    cmd->flags = 0;
     *ext = *cmd;
 
     return TRUE;
@@ -732,8 +721,6 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guin
 
     spice_screen->core = core;
     spice_screen->server = server;
-
-    spice_screen->cursor_notify = NOTIFY_CURSOR_BATCH;
 
     printf("listening on port %d (unsecure)\n", port);
 

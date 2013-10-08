@@ -45,8 +45,6 @@ struct SpiceScreen {
     SpiceTimer *conn_timeout_timer;
     SpiceWatch *mwatch; /* watch master pty */
 
-    int cursor_notify;
-
     // Current mode (set by create_primary)
     int width;
     int height;
