@@ -1493,6 +1493,18 @@ static int vdagent_write_buffer_pos = 0;
 static int agent_owns_clipboard[256] = { 0, };
 
 static void
+spiceterm_clear_selection(spiceTerm *vt)
+{
+    DPRINTF(1, "mark_active = %d", vt->mark_active);
+
+    vt->mark_active = 0;
+    if (vt->selection) free (vt->selection);
+    vt->selection = NULL;
+ 
+    spiceterm_unselect_all(vt);
+}
+ 
+static void
 spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons)
 {
     DPRINTF(1, "mask=%08x x=%d y=%d", buttons, x ,y);
@@ -1747,8 +1759,6 @@ static void vdagent_request_clipboard(spiceTerm *vt, uint8_t selection)
 {
     uint32_t size;
     
-    agent_owns_clipboard[selection] = 1;
-
     size = 4 + sizeof(VDAgentClipboardRequest);
 
     int msg_size =  sizeof(VDIChunkHeader) + sizeof(VDAgentMessage) + size;
@@ -1874,6 +1884,7 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
         uint8_t selection = *((uint8_t *)grab);
         DPRINTF(1, "VD_AGENT_CLIPBOARD_GRAB %d", selection);
         agent_owns_clipboard[selection] = 0;
+        spiceterm_clear_selection(vt);
         break;
     }
     case VD_AGENT_CLIPBOARD_REQUEST: {
