@@ -203,6 +203,28 @@ spiceterm_refresh(spiceTerm *vt)
     spiceterm_show_cursor(vt, 1);
 }
 
+static void
+spiceterm_clear_screen(spiceTerm *vt)
+{
+    int x, y;
+
+    for (y = 0; y <= vt->height; y++) {
+        int y1 = (vt->y_base + y) % vt->total_height;
+        TextCell *c = &vt->cells[y1 * vt->width];
+        for (x = 0; x < vt->width; x++) {
+            c->ch = ' ';
+            c->attrib = vt->default_attrib;
+            c->attrib.fgcol = vt->cur_attrib.fgcol;
+            c->attrib.bgcol = vt->cur_attrib.bgcol;
+           
+            c++;
+        }
+    }
+
+    spice_screen_clear(vt->screen, 0, 0, vt->screen->primary_width, 
+                       vt->screen->primary_height);
+}
+
 void
 spiceterm_unselect_all(spiceTerm *vt)
 {
@@ -922,11 +944,7 @@ spiceterm_putchar(spiceTerm *vt, gunichar2 ch)
                 break;
             case 2:
                 /* clear entire screen */
-                for (y = 0; y <= vt->height; y++) {
-                    for (x = 0; x < vt->width; x++) {
-                        spiceterm_clear_xy(vt, x, y);
-                    }
-                }
+                spiceterm_clear_screen(vt);
                 break;
             }
             break;
