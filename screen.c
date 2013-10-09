@@ -91,6 +91,40 @@ spice_screen_destroy_update(SimpleSpiceUpdate *update)
     g_free(update);
 }
 
+static void 
+release_qxl_command_ext(QXLCommandExt *ext)
+{
+    g_assert(ext != NULL);
+
+    switch (ext->cmd.type) {
+    case QXL_CMD_DRAW:
+        spice_screen_destroy_update((void*)ext);
+        break;
+    case QXL_CMD_SURFACE:
+        free(ext);
+        break;
+    case QXL_CMD_CURSOR: {
+        QXLCursorCmd *cmd = (QXLCursorCmd *)(unsigned long)ext->cmd.data;
+        if (cmd->type == QXL_CURSOR_SET) {
+            free(cmd);
+        }
+        free(ext);
+        break;
+    }
+    default:
+        abort();
+    }
+}
+
+static void 
+release_resource(QXLInstance *qin, struct QXLReleaseInfoExt release_info)
+{
+    QXLCommandExt *ext = (QXLCommandExt*)(unsigned long)release_info.info->id;
+
+    g_assert(release_info.group_id == MEM_SLOT_GROUP_ID);
+    release_qxl_command_ext(ext);
+}
+
 static int unique = 0x0ffff + 1;
 
 static void 
@@ -375,24 +409,6 @@ create_primary_surface(SpiceScreen *spice_screen, uint32_t width,
     qxl_worker->create_primary_surface(qxl_worker, 0, &surface);
 }
 
-void 
-spice_screen_resize(SpiceScreen *spice_screen, uint32_t width,
-                    uint32_t height)
-{
-    QXLWorker *qxl_worker = spice_screen->qxl_worker;
-
-    if (spice_screen->width == width && spice_screen->height == height) {
-        return;
-    }
-
-    qxl_worker->destroy_primary_surface(qxl_worker, 0);
-
-    create_primary_surface(spice_screen, width, height);
-
-    spice_screen_clear(spice_screen, 0, 0, width, height);
-}
-                       
-
 QXLDevMemSlot slot = {
     .slot_group_id = MEM_SLOT_GROUP_ID,
     .slot_id = 0,
@@ -467,6 +483,19 @@ ret:
     return res;
 }
 
+void
+discard_pending_commands(SpiceScreen *spice_screen) 
+{
+    int pos;
+
+    g_mutex_lock(spice_screen->command_mutex);
+    for (pos = spice_screen->commands_start; pos < spice_screen->commands_end; pos++) {
+        release_qxl_command_ext(spice_screen->commands[pos % COMMANDS_SIZE]);
+    }
+    spice_screen->commands_start = spice_screen->commands_end;
+    g_mutex_unlock(spice_screen->command_mutex);
+}
+
 static int 
 req_cmd_notification(QXLInstance *qin)
 {
@@ -474,32 +503,6 @@ req_cmd_notification(QXLInstance *qin)
     //spice_screen->core->timer_start(spice_screen->wakeup_timer, spice_screen->wakeup_ms);
 
     return TRUE;
-}
-
-static void 
-release_resource(QXLInstance *qin, struct QXLReleaseInfoExt release_info)
-{
-    QXLCommandExt *ext = (QXLCommandExt*)(unsigned long)release_info.info->id;
-
-    g_assert(release_info.group_id == MEM_SLOT_GROUP_ID);
-    switch (ext->cmd.type) {
-        case QXL_CMD_DRAW:
-            spice_screen_destroy_update((void*)ext);
-            break;
-        case QXL_CMD_SURFACE:
-            free(ext);
-            break;
-        case QXL_CMD_CURSOR: {
-            QXLCursorCmd *cmd = (QXLCursorCmd *)(unsigned long)ext->cmd.data;
-            if (cmd->type == QXL_CURSOR_SET) {
-                free(cmd);
-            }
-            free(ext);
-            break;
-        }
-        default:
-            abort();
-    }
 }
 
 #define CURSOR_WIDTH 8
@@ -643,6 +646,7 @@ do_conn_timeout(void *opaque)
     }
 }
 
+
 QXLInterface display_sif = {
     .base = {
         .type = SPICE_INTERFACE_QXL,
@@ -742,4 +746,23 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guin
     spice_server_add_interface(spice_screen->server, &spice_screen->qxl_instance.base);
 
     return spice_screen;
+}
+
+void 
+spice_screen_resize(SpiceScreen *spice_screen, uint32_t width,
+                    uint32_t height)
+{
+    QXLWorker *qxl_worker = spice_screen->qxl_worker;
+
+    if (spice_screen->width == width && spice_screen->height == height) {
+        return;
+    }
+
+    discard_pending_commands(spice_screen);
+
+    qxl_worker->destroy_primary_surface(qxl_worker, 0);
+
+    create_primary_surface(spice_screen, width, height);
+
+    spice_screen_clear(spice_screen, 0, 0, width, height);
 }

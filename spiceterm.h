@@ -20,7 +20,7 @@ typedef struct TextCell {
     TextAttributes attrib;
 } TextCell;
 
-#define COMMANDS_SIZE (1024*10)
+#define COMMANDS_SIZE (1024)
 #define MAX_HEIGHT 1440
 #define MAX_WIDTH 2560
 
