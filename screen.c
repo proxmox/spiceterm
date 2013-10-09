@@ -370,6 +370,8 @@ create_primary_surface(SpiceScreen *spice_screen, uint32_t width,
     spice_screen->width = width;
     spice_screen->height = height;
 
+    spice_screen->cursor_set = 0;
+
     qxl_worker->create_primary_surface(qxl_worker, 0, &surface);
 }
 
@@ -532,15 +534,15 @@ cursor_init()
 static int 
 get_cursor_command(QXLInstance *qin, struct QXLCommandExt *ext)
 {
-    //SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
-    static int set = 1;
+    SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
  
     QXLCursorCmd *cursor_cmd;
     QXLCommandExt *cmd;
 
-    if (!set) return FALSE;
-    set = 0;
-  
+    if (spice_screen->cursor_set) 
+        return FALSE;
+        
+    spice_screen->cursor_set = 1;
     
     cmd = calloc(sizeof(QXLCommandExt), 1);
     cursor_cmd = calloc(sizeof(QXLCursorCmd), 1);

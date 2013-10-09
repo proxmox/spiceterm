@@ -58,6 +58,8 @@ struct SpiceScreen {
 
     //cache for glyphs bitmaps
     GHashTable *image_cache;
+    
+    gboolean cursor_set;
 
     // callbacks
     void (*on_client_connected)(SpiceScreen *spice_screen);
