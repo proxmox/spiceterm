@@ -206,15 +206,23 @@ spiceterm_refresh(spiceTerm *vt)
 void
 spiceterm_unselect_all(spiceTerm *vt)
 {
-    int i;
+    int x, y, y1;
 
-    for (i = 0; i < vt->width*vt->total_height; i++) {
-        if (vt->cells[i].attrib.selected) {
-            vt->cells[i].attrib.selected = 0;
+    y1 = vt->y_displ;
+    for(y = 0; y < vt->total_height; y++) {
+        TextCell *c = vt->cells + y1 * vt->width;
+        for(x = 0; x < vt->width; x++) {
+           if (c->attrib.selected) {
+               c->attrib.selected = 0;
+               if (y < vt->height) {
+                   draw_char_at(vt, x, y, c->ch, c->attrib);
+               }
+           }
+           c++;
         }
+        if (++y1 == vt->total_height)
+            y1 = 0;
     }
-
-    spiceterm_refresh(vt);
 }
 
 static void
