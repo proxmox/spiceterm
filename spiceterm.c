@@ -1354,17 +1354,7 @@ spiceterm_respond_unichar2(spiceTerm *vt, gunichar2 uc)
 }
 
 static void
-my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
-{
-    // spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
-
-    /* we no not need this */
-
-    return;
-}
-
-static void
-spiceterm_push_keyval(spiceTerm *vt, uint32_t keySym, uint32_t flags)
+spiceterm_push_keysym(spiceTerm *vt, uint32_t keySym, uint32_t flags)
 {
     static int control = 0;
     static int shift = 0;
@@ -1374,7 +1364,7 @@ spiceterm_push_keyval(spiceTerm *vt, uint32_t keySym, uint32_t flags)
 
     DPRINTF(1, "flags=%d keySym=%08x", flags, keySym);
 
-    if (flags & VD_AGENT_KEYVAL_FLAG_DOWN) {
+    if (flags & SPICE_KEYBOARD_FLAG_DOWN) {
         if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
             shift = 1;
         } if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
@@ -1484,7 +1474,7 @@ spiceterm_push_keyval(spiceTerm *vt, uint32_t keySym, uint32_t flags)
 
 ret:
 
-    if (!(flags & VD_AGENT_KEYVAL_FLAG_DOWN)) { // UP
+    if (flags & SPICE_KEYBOARD_FLAG_UP) {
         if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
             shift = 0;
         } else if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
@@ -1501,6 +1491,26 @@ my_kbd_get_leds(SpiceKbdInstance *sin)
     return 0;
 }
 
+static void
+my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
+{
+    // spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
+
+    /* we no not need this */
+
+    return;
+}
+
+static void
+my_kbd_push_x11_keysym(SpiceKbdInstance *sin, uint32_t keysym,  uint32_t flags)
+{
+    spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
+
+    spiceterm_push_keysym(vt, keysym, flags);
+
+    return;
+}
+
 static SpiceKbdInterface my_keyboard_sif = {
     .base.type          = SPICE_INTERFACE_KEYBOARD,
     .base.description   = "spiceterm keyboard device",
@@ -1508,6 +1518,7 @@ static SpiceKbdInterface my_keyboard_sif = {
     .base.minor_version = SPICE_INTERFACE_KEYBOARD_MINOR,
     .push_scan_freg     = my_kbd_push_key,
     .get_leds           = my_kbd_get_leds,
+    .push_x11_keysym    = my_kbd_push_x11_keysym,
 };
 
 
@@ -1719,7 +1730,6 @@ static void vdagent_send_capabilities(spiceTerm *vt, uint32_t request)
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_CLIPBOARD_SELECTION);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_SPARSE_MONITORS_CONFIG);
     VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_GUEST_LINEEND_LF);
-    VD_AGENT_SET_CAPABILITY(caps->caps, VD_AGENT_CAP_KEYVAL);
 
     int msg_size =  sizeof(VDIChunkHeader) + sizeof(VDAgentMessage) + size;
     g_assert((vdagent_write_buffer_pos + msg_size) < VDAGENT_WBUF_SIZE);
@@ -1882,11 +1892,6 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
     DPRINTF(1, "%d %d %d %d", len, hdr->port, msg->protocol, msg->type);
 
     switch (msg->type) {
-    case VD_AGENT_KEYVAL: {
-        VDAgentKeyval *info = (VDAgentKeyval *)&msg[1];
-        spiceterm_push_keyval(vt, info->keyval, info->flags);
-        break;
-    } 
     case VD_AGENT_MOUSE_STATE: { 
         VDAgentMouseState *info = (VDAgentMouseState *)&msg[1];
         spiceterm_motion_event(vt, info->x, info->y, info->buttons);
