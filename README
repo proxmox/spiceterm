@@ -1,0 +1,24 @@
+
+spiceterm is a full featured terminal emulator and exports the display
+using the SPICE protocol.
+
+Features: 
+
+* xterm/linux compatible
+* cut and paste (vdagent)
+* screen resize (vdagent)
+
+Example usage:
+
+By default we start a simple shell (/bin/sh)
+
+# ./spiceterm & remote-viewer spice://localhost:5912
+
+You can also specify the program to execute, for example a login screen
+
+# ./spiceterm -c /bin/login & remote-viewer spice://localhost:5912
+
+Or enter a OpenVZ container console
+
+# ./spiceterm -c vzctl enter 100  & remote-viewer spice://localhost:5912
+
