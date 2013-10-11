@@ -1502,11 +1502,16 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 }
 
 static void
-my_kbd_push_x11_keysym(SpiceKbdInstance *sin, uint32_t keysym,  uint32_t flags)
+my_kbd_push_x11_keysym(SpiceKbdInstance *sin, uint32_t keysym, uint32_t flags,
+                       uint8_t code_len, uint8_t *code)
 {
     spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
 
-    spiceterm_push_keysym(vt, keysym, flags);
+    DPRINTF(1, "flags=%d keySym=%08x code_len=%d", flags, keysym, code_len);
+
+    if (keysym) {
+        spiceterm_push_keysym(vt, keysym, flags);
+    }
 
     return;
 }
