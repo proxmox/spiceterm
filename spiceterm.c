@@ -1353,165 +1353,211 @@ spiceterm_respond_unichar2(spiceTerm *vt, gunichar2 uc)
     }
 }
 
-static void
-spiceterm_push_keysym(spiceTerm *vt, uint32_t keySym, uint32_t flags)
-{
-    static int control = 0;
-    static int shift = 0;
-    char *esc = NULL;
-
-    gunichar2 uc = 0;
-
-    DPRINTF(1, "flags=%d keySym=%08x", flags, keySym);
-
-    if (flags & SPICE_KEYBOARD_FLAG_DOWN) {
-        if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
-            shift = 1;
-        } if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
-            control = 1;
-        } else if (vt->ibuf_count < (IBUFSIZE - 32)) {
-
-            if (control) {
-                if(keySym >= 'a' && keySym <= 'z')
-                    uc = keySym - 'a' + 1;
-                else if (keySym >= 'A' && keySym <= 'Z')
-                    uc = keySym - 'A' + 1;
-                else
-                    uc = 0;
-
-            } else {
-                switch (keySym) {
-                case GDK_KEY_Escape:
-                    uc = 27; break;
-                case GDK_KEY_Return:
-                    uc = '\r'; break;
-                case GDK_KEY_BackSpace:
-                    uc = 8; break;
-                case GDK_KEY_Tab:
-                    uc = '\t'; break;
-                case GDK_KEY_Delete: /* kdch1 */
-                case GDK_KEY_KP_Delete:
-                    esc = "[3~";break;
-                case GDK_KEY_Home: /* khome */
-                case GDK_KEY_KP_Home:
-                    esc = "OH";break;
-                case GDK_KEY_End:
-                case GDK_KEY_KP_End: /* kend */
-                    esc = "OF";break;
-                case GDK_KEY_Insert: /* kich1 */
-                case GDK_KEY_KP_Insert:
-                    esc = "[2~";break;
-                case GDK_KEY_Up:
-                case GDK_KEY_KP_Up:  /* kcuu1 */
-                    esc = "OA";break;
-                case GDK_KEY_Down: /* kcud1 */
-                case GDK_KEY_KP_Down:
-                    esc = "OB";break;
-                case GDK_KEY_Right:
-                case GDK_KEY_KP_Right: /* kcuf1 */
-                    esc = "OC";break;
-                case GDK_KEY_Left:
-                case GDK_KEY_KP_Left: /* kcub1 */
-                    esc = "OD";break;
-                case GDK_KEY_Page_Up:
-                    if (shift) {
-                        spiceterm_virtual_scroll (vt, -vt->height/2);
-                        goto ret;
-                    }
-                    esc = "[5~";break;
-                case GDK_KEY_Page_Down:
-                    if (shift) {
-                        spiceterm_virtual_scroll (vt, vt->height/2);
-                        goto ret;
-                    }
-                    esc = "[6~";break;
-                case GDK_KEY_F1:
-                    esc = "OP";break;
-                case GDK_KEY_F2:
-                    esc = "OQ";break;
-                case GDK_KEY_F3:
-                    esc = "OR";break;
-                case GDK_KEY_F4:
-                    esc = "OS";break;
-                case GDK_KEY_F5:
-                    esc = "[15~";break;
-                case GDK_KEY_F6:
-                    esc = "[17~";break;
-                case GDK_KEY_F7:
-                    esc = "[18~";break;
-                case GDK_KEY_F8:
-                    esc = "[19~";break;
-                case GDK_KEY_F9:
-                    esc = "[20~";break;
-                case GDK_KEY_F10:
-                    esc = "[21~";break;
-                case GDK_KEY_F11:
-                    esc = "[23~";break;
-                case GDK_KEY_F12:
-                    esc = "[24~";break;
-                default:
-                    if (keySym < 0x100) {
-                        uc = keySym;
-                    }
-                    break;
-                }
-            }
-
-            DPRINTF(1, "escape=%s unicode=%08x\n", esc, uc);
-
-            if (vt->y_displ != vt->y_base) {
-                vt->y_displ = vt->y_base;
-                spiceterm_refresh(vt);
-            }
-
-            if (esc) {
-                spiceterm_respond_esc(vt, esc);
-            } else if (uc > 0) {
-                spiceterm_respond_unichar2(vt, uc);
-            }
-        }
-    }
-
-ret:
-
-    if (flags & SPICE_KEYBOARD_FLAG_UP) {
-        if (keySym == GDK_KEY_Shift_L || keySym == GDK_KEY_Shift_R) {
-            shift = 0;
-        } else if (keySym == GDK_KEY_Control_L || keySym == GDK_KEY_Control_R) {
-            control = 0;
-        }
-    }
-
-    spiceterm_update_watch_mask(vt, TRUE);
-}
-
 static uint8_t
 my_kbd_get_leds(SpiceKbdInstance *sin)
 {
     return 0;
 }
 
+#define KBD_MOD_CONTROL_L_FLAG (1<<0)
+#define KBD_MOD_CONTROL_R_FLAG (1<<1)
+#define KBD_MOD_SHIFT_L_FLAG (1<<2)
+#define KBD_MOD_SHIFT_R_FLAG (1<<3)
+
+static int kbd_flags = 0;
 static void
 my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
 {
-    // spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
+    spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
 
-    /* we no not need this */
+    char *esc = NULL; // used to send special keys
 
+    static int e0_mode = 0;
+
+    DPRINTF(1, "enter frag=%02x flags=%08x", frag, kbd_flags);
+
+    if (e0_mode) {
+        e0_mode = 0;
+        switch (frag) {
+        case 0x1d: // press Control_R
+            kbd_flags |= KBD_MOD_CONTROL_R_FLAG;
+            break;
+        case  0x9d: // release Control_R
+            kbd_flags &= ~KBD_MOD_CONTROL_R_FLAG;
+            break;
+        case 0x47: // press Home
+            esc = "OH";
+            break;
+        case 0x4f: // press END
+            esc = "OF";
+            break;
+        case 0x48: // press UP
+            esc = "OA";
+            break;
+        case 0x50: // press DOWN
+            esc = "OB";
+            break;
+        case 0x4b: // press LEFT
+            esc = "OD";
+            break;
+        case 0x4d: // press RIGHT
+            esc = "OC";
+            break;
+        case 0x52: // press INSERT
+            esc = "[2~";
+            break;
+        case 0x49: // press PAGE_UP
+            if (kbd_flags & (KBD_MOD_SHIFT_L_FLAG|KBD_MOD_SHIFT_R_FLAG)) {
+                spiceterm_virtual_scroll (vt, -vt->height/2);
+            }
+            break;
+        case 0x51: // press PAGE_DOWN
+            if (kbd_flags & (KBD_MOD_SHIFT_L_FLAG|KBD_MOD_SHIFT_R_FLAG)) {
+                spiceterm_virtual_scroll (vt, vt->height/2);
+            }
+            break;
+        }
+    } else {
+        switch (frag) {
+        case 0xe0:
+            e0_mode = 1;
+            break;
+        case 0x1d: // press Control_L
+            kbd_flags |= KBD_MOD_CONTROL_L_FLAG;
+            break;
+        case 0x9d: // release Control_L
+            kbd_flags &= ~KBD_MOD_CONTROL_L_FLAG;
+            break;
+        case 0x2a: // press Shift_L
+            kbd_flags |= KBD_MOD_SHIFT_L_FLAG;
+            break;
+        case 0xaa: // release Shift_L
+            kbd_flags &= ~KBD_MOD_SHIFT_L_FLAG;
+            break;
+        case 0x36: // press Shift_R
+            kbd_flags |= KBD_MOD_SHIFT_R_FLAG;
+            break;
+        case 0xb6: // release Shift_R
+            kbd_flags &= ~KBD_MOD_SHIFT_R_FLAG;
+            break;
+        case 0x52: // press KP_INSERT
+            esc = "[2~";
+            break;
+        case 0x53: // press KP_Delete
+            esc = "[3~";
+            break;
+        case 0x47: // press KP_Home
+            esc = "OH";
+            break;
+        case 0x4f: // press KP_END
+            esc = "OF";
+            break;
+        case 0x48: // press KP_UP
+            esc = "OA";
+            break;
+        case 0x50: // press KP_DOWN
+            esc = "OB";
+            break;
+        case 0x4b: // press KP_LEFT
+            esc = "OD";
+            break;
+        case 0x4d: // press KP_RIGHT
+            esc = "OC";
+            break;
+        case 0x3b: // press F1
+            esc = "OP";
+            break;
+        case 0x3c: // press F2
+            esc = "OQ";
+            break;
+        case 0x3d: // press F3
+            esc = "OR";
+            break;
+        case 0x3e: // press F4
+            esc = "OS";
+            break;
+        case 0x3f: // press F5
+            esc = "[15~";
+            break;
+        case 0x40: // press F6
+            esc = "[17~";
+            break;
+        case 0x41: // press F7
+            esc = "[18~";
+            break;
+        case 0x42: // press F8
+            esc = "[19~";
+            break;
+        case 0x43: // press F9
+            esc = "[20~";
+            break;
+        case 0x44: // press F10
+            esc = "[21~";
+            break;
+        case 0x57: // press F11
+            esc = "[23~";
+            break;
+        case 0x58: // press F12
+            esc = "[24~";
+            break;
+        }
+    }
+
+    if (esc) {
+        DPRINTF(1, "escape=%s", esc);
+        spiceterm_respond_esc(vt, esc);
+
+        if (vt->y_displ != vt->y_base) {
+            vt->y_displ = vt->y_base;
+            spiceterm_refresh(vt);
+        }
+
+        spiceterm_update_watch_mask(vt, TRUE);
+    }
+
+    DPRINTF(1, "leave frag=%02x flags=%08x", frag, kbd_flags);
     return;
 }
 
 static void
-my_kbd_push_x11_keysym(SpiceKbdInstance *sin, uint32_t keysym, uint32_t flags,
-                       uint8_t code_len, uint8_t *code)
+my_kbd_push_utf8(SpiceKbdInstance *sin, uint32_t size, uint8_t *data)
 {
     spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
 
-    DPRINTF(1, "flags=%d keySym=%08x code_len=%d", flags, keysym, code_len);
+    DPRINTF(1, " size=%d data[0]=%02x", size, data[0]);
 
-    if (keysym) {
-        spiceterm_push_keysym(vt, keysym, flags);
+    if (vt->ibuf_count + size >= IBUFSIZE) {
+        fprintf(stderr, "input buffer oferflow\n");
+        return;
     }
+
+     if (kbd_flags & (KBD_MOD_CONTROL_L_FLAG|KBD_MOD_CONTROL_R_FLAG)) {
+        if (size != 1) return;
+        if (data[0] >= 'a' && data[0] <= 'z') {
+            vt->ibuf[vt->ibuf_count++] = data[0] - 'a' + 1;
+        } else if (data[0] >= 'A' && data[0] <= 'Z') {
+            vt->ibuf[vt->ibuf_count++] = data[0] - 'A' + 1;
+        }
+    } else {
+        if (size == 1 && data[0] == 0x7f) {
+            /* use an escape sequence for DELETE, else it behaves
+             * like BACKSPACE 
+             */
+            spiceterm_respond_esc(vt, "[3~");
+        } else {
+            int i;
+            for (i = 0; i < size; i++) {
+                vt->ibuf[vt->ibuf_count++] = data[i];
+            }
+        }
+    }
+    
+    if (vt->y_displ != vt->y_base) {
+        vt->y_displ = vt->y_base;
+        spiceterm_refresh(vt);
+    }
+
+    spiceterm_update_watch_mask(vt, TRUE);
 
     return;
 }
@@ -1523,7 +1569,7 @@ static SpiceKbdInterface my_keyboard_sif = {
     .base.minor_version = SPICE_INTERFACE_KEYBOARD_MINOR,
     .push_scan_freg     = my_kbd_push_key,
     .get_leds           = my_kbd_get_leds,
-    .push_x11_keysym    = my_kbd_push_x11_keysym,
+    .push_utf8          = my_kbd_push_utf8,
 };
 
 
@@ -1958,14 +2004,14 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
         uint8_t *data = (uint8_t *)&msg[1];
         uint8_t selection = data[0];
         
-        DPRINTF(0, "VD_AGENT_CLIPBOARD_RELEASE %d", selection);
+        DPRINTF(1, "VD_AGENT_CLIPBOARD_RELEASE %d", selection);
      
         break;
     }
     case VD_AGENT_MONITORS_CONFIG: {
         VDAgentMonitorsConfig *list = (VDAgentMonitorsConfig *)&msg[1];
         g_assert(list->num_of_monitors > 0);
-        DPRINTF(0, "VD_AGENT_MONITORS_CONFIG %d %d %d", list->num_of_monitors, 
+        DPRINTF(1, "VD_AGENT_MONITORS_CONFIG %d %d %d", list->num_of_monitors, 
                 list->monitors[0].width, list->monitors[0].height);
         
         spiceterm_resize(vt, list->monitors[0].width, list->monitors[0].height);
@@ -1974,7 +2020,7 @@ vmc_write(SpiceCharDeviceInstance *sin, const uint8_t *buf, int len)
         break;
     }
     default:
-        DPRINTF(0, "got uknown vdagent message type %d\n", msg->type);
+        DPRINTF(1, "got uknown vdagent message type %d\n", msg->type);
     }
 
     return len;
