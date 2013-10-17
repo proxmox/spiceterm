@@ -138,3 +138,25 @@ typedef struct spiceTerm {
     unsigned int report_mouse:1;
 
 } spiceTerm;
+
+void init_spiceterm(spiceTerm *vt, uint32_t width, uint32_t height);
+void spiceterm_refresh(spiceTerm *vt);
+
+void spiceterm_resize(spiceTerm *vt, uint32_t width, uint32_t height);
+void spiceterm_virtual_scroll(spiceTerm *vt, int lines);
+void spiceterm_clear_selection(spiceTerm *vt);
+void spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, 
+                            uint32_t buttons);
+
+void spiceterm_respond_esc(spiceTerm *vt, const char *esc);
+void spiceterm_respond_data(spiceTerm *vt, int len, uint8_t *data);
+void spiceterm_update_watch_mask(spiceTerm *vt, gboolean writable);
+
+spiceTerm *create_spiceterm(int argc, char** argv, uint32_t maxx, 
+                            uint32_t maxy, guint timeout);
+
+gboolean vdagent_owns_clipboard(spiceTerm *vt);
+void vdagent_request_clipboard(spiceTerm *vt);
+void vdagent_grab_clipboard(spiceTerm *vt);
+
+
