@@ -88,7 +88,7 @@ typedef struct spiceTerm {
     int altbuf:1;
 
     unsigned int utf8:1; // utf8 mode
-    long utf_char;       // used by utf8 parser
+    gunichar utf_char;   // used by utf8 parser
     int utf_count;       // used by utf8 parser
 
     TextAttributes default_attrib;
