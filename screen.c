@@ -40,6 +40,7 @@
 #include <spice/macros.h>
 #include <spice/qxl_dev.h>
 #include <spice/vd_agent.h>
+#include <sasl/sasl.h>
 
 #include "glyphs.h"
 
@@ -706,12 +707,64 @@ spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch,
     push_command(spice_screen, &update->ext);
 }
 
+static int 
+sasl_checkpass_cb(sasl_conn_t *conn,
+                  void *context,
+                  const char *user,
+                  const char *pass,
+                  unsigned passlen,
+                  struct propctx *propctx)
+{
+    const void *remoteport = NULL;
+    char *clientip = NULL;
+    if (sasl_getprop(conn, SASL_IPREMOTEPORT, &remoteport) == SASL_OK) {
+        clientip = strtok(g_strdup(remoteport), ";");
+    } else {
+        clientip = g_strdup("unknown");
+    }
+
+    int res = pve_auth_verify(clientip, user, pass);
+
+    g_free(clientip);
+
+    return (res == 0) ? SASL_OK : SASL_NOAUTHZ;
+}
+
+static int 
+sasl_getopt_cb(void *context, const char *plugin_name,
+               const char *option,
+               const char **result, unsigned *len)
+{
+    if (strcmp(option, "mech_list") == 0) {
+        *result = "plain";
+        len = NULL;
+        return SASL_OK;
+    }
+
+    return SASL_FAIL;
+}
+
+typedef int sasl_cb_fn(void);  
+static sasl_callback_t sasl_callbacks[] = {
+    { SASL_CB_GETOPT, (sasl_cb_fn *)sasl_getopt_cb, NULL },
+    { SASL_CB_SERVER_USERDB_CHECKPASS, (sasl_cb_fn *)sasl_checkpass_cb, NULL },
+    { SASL_CB_LIST_END, NULL, NULL },
+};
+ 
 SpiceScreen *
 spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guint timeout)
 {
     int port = 5912;
     SpiceScreen *spice_screen = g_new0(SpiceScreen, 1);
     SpiceServer* server = spice_server_new();
+    char *x509_key_file = "/etc/pve/local/pve-ssl.key";
+    char *x509_cert_file = "/etc/pve/local/pve-ssl.pem";
+    char *x509_cacert_file = "/etc/pve/pve-root-ca.pem";
+    char *x509_key_password = NULL;
+    char *x509_dh_file = NULL;
+    char *tls_ciphers = "DES-CBC3-SHA";    
+
+    gboolean use_auth = TRUE;
 
     spice_screen->width = width;
     spice_screen->height = height;
@@ -728,10 +781,25 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guin
     spice_screen->core = core;
     spice_screen->server = server;
 
-    printf("listening on port %d (unsecure)\n", port);
+    printf("listening on port %d (secure)\n", port);
+    // spice_server_set_addr();
+    // spice_server_set_port(spice_server, port);
+    //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
 
-    spice_server_set_port(server, port);
-    spice_server_set_noauth(server);
+    spice_server_set_tls(server, port,
+                         x509_cacert_file,
+                         x509_cert_file,
+                         x509_key_file,
+                         x509_key_password,
+                         x509_dh_file,
+                         tls_ciphers);
+
+    if (use_auth) {
+        spice_server_set_sasl(server, 1);
+        spice_server_set_sasl_callbacks(server, sasl_callbacks);
+    } else {
+        spice_server_set_noauth(server);
+    }
 
     int res = spice_server_init(server, core);
     if (res != 0) {

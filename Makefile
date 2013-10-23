@@ -2,7 +2,7 @@
 PROGRAMS=spiceterm
 
 HEADERS=translations.h event_loop.h glyphs.h spiceterm.h
-SOURCES=screen.c event_loop.c input.c spiceterm.c
+SOURCES=screen.c event_loop.c input.c spiceterm.c auth-pve.c
 
 #export G_MESSAGES_DEBUG=all 
 #export SPICE_DEBUG=1
@@ -14,7 +14,8 @@ spiceterm: ${SOURCES} ${HEADERS} spiceterm.c
 
 .PHONY: test
 test: spiceterm
-	./spiceterm & remote-viewer spice://localhost:5912
+	#./spiceterm & remote-viewer spice://localhost:5912
+	G_MESSAGES_DEBUG=all SPICE_DEBUG=1 ./spiceterm & G_MESSAGES_DEBUG=all SPICE_DEBUG=1 remote-viewer --debug 'spice://localhost?tls-port=5912' --spice-ca-file /etc/pve/pve-root-ca.pem --spice-secure-channels=all
 
 .PHONY: distclean
 distclean: clean

@@ -159,4 +159,6 @@ gboolean vdagent_owns_clipboard(spiceTerm *vt);
 void vdagent_request_clipboard(spiceTerm *vt);
 void vdagent_grab_clipboard(spiceTerm *vt);
 
+int pve_auth_verify(const char *clientip, const char *username, const char *passwd);
+
 
