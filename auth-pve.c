@@ -10,6 +10,18 @@
 static char *auth_path = "/";
 static char *auth_perm = "Sys.Console";
 
+void 
+pve_auth_set_path(char *path) 
+{
+    auth_path = path;
+}
+
+void 
+pve_auth_set_permissions(char *perm) 
+{
+    auth_perm = perm;
+}
+
 static char *
 urlencode(char *buf, const char *value)
 {

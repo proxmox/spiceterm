@@ -14,8 +14,8 @@ spiceterm: ${SOURCES} ${HEADERS} spiceterm.c
 
 .PHONY: test
 test: spiceterm
-	#./spiceterm & remote-viewer spice://localhost:5912
-	G_MESSAGES_DEBUG=all SPICE_DEBUG=1 ./spiceterm & G_MESSAGES_DEBUG=all SPICE_DEBUG=1 remote-viewer --debug 'spice://localhost?tls-port=5912' --spice-ca-file /etc/pve/pve-root-ca.pem --spice-secure-channels=all
+	#./spiceterm & remote-viewer spice://localhost:5900
+	G_MESSAGES_DEBUG=all SPICE_DEBUG=1 SPICE_TICKET=test ./spiceterm & G_MESSAGES_DEBUG=all SPICE_DEBUG=1 remote-viewer --debug 'spice://localhost?tls-port=5900' --spice-ca-file /etc/pve/pve-root-ca.pem --spice-secure-channels=all
 
 .PHONY: distclean
 distclean: clean

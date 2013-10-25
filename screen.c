@@ -752,9 +752,9 @@ static sasl_callback_t sasl_callbacks[] = {
 };
  
 SpiceScreen *
-spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guint timeout)
+spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, 
+                 SpiceTermOptions *opts)
 {
-    int port = 5912;
     SpiceScreen *spice_screen = g_new0(SpiceScreen, 1);
     SpiceServer* server = spice_server_new();
     char *x509_key_file = "/etc/pve/local/pve-ssl.key";
@@ -763,8 +763,6 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guin
     char *x509_key_password = NULL;
     char *x509_dh_file = NULL;
     char *tls_ciphers = "DES-CBC3-SHA";    
-
-    gboolean use_auth = TRUE;
 
     spice_screen->width = width;
     spice_screen->height = height;
@@ -781,12 +779,17 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guin
     spice_screen->core = core;
     spice_screen->server = server;
 
-    printf("listening on port %d (secure)\n", port);
-    // spice_server_set_addr();
+    if (opts->addr) {
+        printf("listening on '%s:%d' (TLS)\n", opts->addr, opts->port);
+        spice_server_set_addr(server, opts->addr, 0);
+    } else {
+        printf("listening on '*:%d' (TLS)\n", opts->port);
+    }
+
     // spice_server_set_port(spice_server, port);
     //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
 
-    spice_server_set_tls(server, port,
+    spice_server_set_tls(server, opts->port,
                          x509_cacert_file,
                          x509_cert_file,
                          x509_key_file,
@@ -794,11 +797,19 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guin
                          x509_dh_file,
                          tls_ciphers);
 
-    if (use_auth) {
-        spice_server_set_sasl(server, 1);
-        spice_server_set_sasl_callbacks(server, sasl_callbacks);
-    } else {
+    if (opts->noauth) {
         spice_server_set_noauth(server);
+    } else {
+        if (opts->sasl) {
+            spice_server_set_sasl(server, 1);
+            spice_server_set_sasl_appname(server, NULL); // enforce pve auth
+            spice_server_set_sasl_callbacks(server, sasl_callbacks);
+        } else {
+            char *ticket = getenv("SPICE_TICKET");
+            if (ticket) {
+                spice_server_set_ticket(server, ticket, 300, 0, 0);
+            }
+        }
     }
 
     int res = spice_server_init(server, core);
@@ -809,7 +820,7 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, guin
     cursor_init();
 
     spice_screen->conn_timeout_timer = core->timer_add(do_conn_timeout, spice_screen);
-    spice_screen->core->timer_start(spice_screen->conn_timeout_timer, timeout*1000);
+    spice_screen->core->timer_start(spice_screen->conn_timeout_timer, opts->timeout*1000);
 
     spice_server_add_interface(spice_screen->server, &spice_screen->qxl_instance.base);
 

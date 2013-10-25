@@ -620,10 +620,10 @@ static SpiceCharDeviceInterface my_vdagent_sif = {
 };
 
 spiceTerm *
-create_spiceterm(int argc, char** argv, uint32_t maxx, uint32_t maxy, guint timeout)
+spiceterm_create(uint32_t width, uint32_t height, SpiceTermOptions *opts)
 {
     SpiceCoreInterface *core = basic_event_loop_init();
-    SpiceScreen *spice_screen = spice_screen_new(core, maxx, maxy, timeout);
+    SpiceScreen *spice_screen = spice_screen_new(core, width, height, opts);
 
     //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
         
@@ -639,7 +639,7 @@ create_spiceterm(int argc, char** argv, uint32_t maxx, uint32_t maxy, guint time
     spice_server_add_interface(spice_screen->server, &vt->vdagent_sin.base);
     vt->screen = spice_screen;
 
-    init_spiceterm(vt, maxx, maxy);
+    init_spiceterm(vt, width, height);
 
     return vt;
 }

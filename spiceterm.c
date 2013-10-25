@@ -41,6 +41,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <locale.h>
+#include <getopt.h>
 
 #include "spiceterm.h"
 
@@ -67,23 +68,10 @@ static int debug = 0;
 
 #define TERMIDCODE "[?1;2c" // vt100 ID
 
-#define CHECK_ARGC(argc,argv,i) if (i >= argc-1) { \
-   fprintf(stderr, "ERROR: not enough arguments for: %s\n", argv[i]); \
-   print_usage(NULL); \
-   exit(1); \
-}
-
 /* these colours are from linux kernel drivers/char/vt.c */
 
 unsigned char color_table[] = { 0, 4, 2, 6, 1, 5, 3, 7,
 				8,12,10,14, 9,13,11,15 };
-
-static void
-print_usage(const char *msg)
-{
-    if (msg) { fprintf(stderr, "ERROR: %s\n", msg); }
-    fprintf(stderr, "USAGE: spiceterm [spiceopts] [-c command [args]]\n");
-}
 
 static void
 draw_char_at(spiceTerm *vt, int x, int y, gunichar2 ch, TextAttributes attrib)
@@ -1611,32 +1599,93 @@ master_watch(int master, int event, void *opaque)
     }
 }
 
+static void
+spiceterm_print_usage(const char *msg)
+{
+    if (msg) { 
+        fprintf(stderr, "ERROR: %s\n", msg); 
+    }
+    fprintf(stderr, "USAGE: spiceterm [OPTIONS] [-- command [args]]\n");
+    fprintf(stderr, "  --timeout <seconds>  Wait this time before aborting (default is 10 seconds)\n");
+    fprintf(stderr, "  --authpath <path>    Authentication path  (PVE AUTH)\n");
+    fprintf(stderr, "  --permission <perm>  Required permissions (PVE AUTH)\n");
+    fprintf(stderr, "  --port <port>        Bind to port <port>\n");
+    fprintf(stderr, "  --addr <addr>        Bind to address <addr>\n");
+    fprintf(stderr, "  --sasl               Enable SASL based authentication\n");
+    fprintf(stderr, "  --noauth             Disable authentication\n");
+}
+
 int
 main (int argc, char** argv)
 {
-    int i;
+    int c;
     char **cmdargv = NULL;
     char *command = "/bin/bash"; // execute normal shell as default
     int pid;
     int master;
     char ptyname[1024];
     struct winsize dimensions;
+    SpiceTermOptions opts = {
+        .timeout = 10,
+        .port = 5900,
+        .addr = NULL,
+        .noauth = FALSE,
+        .sasl = FALSE,
+    };
 
     g_thread_init(NULL);
 
-    for (i = 1; i < argc; i++) {
-        if (!strcmp (argv[i], "-c")) {
-            command = argv[i+1];
-            cmdargv = &argv[i+1];
-            argc = i;
-            argv[i] = NULL;
+    static struct option long_options[] = {
+        { "timeout", required_argument, 0,  't' },
+        { "authpath", required_argument, 0, 'A' },
+        { "permissions", required_argument, 0, 'P' },
+        { "port", required_argument, 0, 'p' },
+        { "addr", required_argument, 0, 'a' },
+        { "noauth", no_argument, 0, 'n' },
+        { "sasl", no_argument, 0, 's' },
+        { NULL, 0, 0, 0 },
+    };
+
+    while ((c = getopt_long(argc, argv, "nst:a:p:P:", long_options, NULL)) != -1) {
+        
+        switch (c) {
+        case 'n':
+            opts.noauth = TRUE;
             break;
+        case 's':
+            opts.sasl = TRUE;
+            break;
+        case 'A':
+            pve_auth_set_path(optarg);
+            break;
+        case 'P':
+            pve_auth_set_permissions(optarg);
+            break;
+        case 'p':
+            opts.port = atoi(optarg);
+            break;
+         case 'a':
+            opts.addr = optarg;
+            break;
+        case 't':
+            opts.timeout = atoi(optarg);
+            break;
+        case '?':
+            spiceterm_print_usage(NULL);
+            exit(-1);
+            break;
+        default:
+            spiceterm_print_usage("getopt returned unknown character code");
+            exit(-1);            
         }
     }
-
-    if (0) print_usage(NULL); // fixme:
-
-    spiceTerm *vt = create_spiceterm (argc, argv, 744, 400, 10);
+ 
+    if (optind < argc) {
+        command = argv[optind+1];
+        cmdargv = &argv[optind+1];
+    }
+    
+    spiceTerm *vt = spiceterm_create(744, 400, &opts);
 
     setlocale(LC_ALL, ""); // set from environment
 

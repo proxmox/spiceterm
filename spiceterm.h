@@ -24,6 +24,14 @@ typedef struct TextCell {
 #define MAX_HEIGHT 1440
 #define MAX_WIDTH 2560
 
+typedef struct SpiceTermOptions {
+    guint timeout;
+    int port;
+    char *addr;
+    gboolean noauth;
+    gboolean sasl;
+} SpiceTermOptions;
+
 typedef struct SpiceScreen SpiceScreen;
 
 typedef struct CachedImage {
@@ -66,7 +74,7 @@ struct SpiceScreen {
     void (*on_client_disconnected)(SpiceScreen *spice_screen);
 };
 
-SpiceScreen* spice_screen_new(SpiceCoreInterface* core, uint32_t width, uint32_t height, guint timeout);
+SpiceScreen* spice_screen_new(SpiceCoreInterface* core, uint32_t width, uint32_t height, SpiceTermOptions *opts);
 
 void spice_screen_resize(SpiceScreen *spice_screen, uint32_t width, uint32_t height);
 void spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib);
@@ -152,13 +160,13 @@ void spiceterm_respond_esc(spiceTerm *vt, const char *esc);
 void spiceterm_respond_data(spiceTerm *vt, int len, uint8_t *data);
 void spiceterm_update_watch_mask(spiceTerm *vt, gboolean writable);
 
-spiceTerm *create_spiceterm(int argc, char** argv, uint32_t maxx, 
-                            uint32_t maxy, guint timeout);
+spiceTerm *spiceterm_create(uint32_t width, uint32_t height, SpiceTermOptions *opts);
 
 gboolean vdagent_owns_clipboard(spiceTerm *vt);
 void vdagent_request_clipboard(spiceTerm *vt);
 void vdagent_grab_clipboard(spiceTerm *vt);
 
 int pve_auth_verify(const char *clientip, const char *username, const char *passwd);
-
+void pve_auth_set_path(char *path);
+void pve_auth_set_permissions(char *perm);
 
