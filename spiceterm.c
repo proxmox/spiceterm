@@ -51,8 +51,6 @@
 #include <spice/macros.h>
 #include <spice/qxl_dev.h>
 
-#include <gdk/gdkkeysyms.h>
-
 #include "event_loop.h"
 #include "translations.h"
 
@@ -1691,6 +1689,8 @@ main (int argc, char** argv)
     }
     
     spiceTerm *vt = spiceterm_create(744, 400, &opts);
+    if (!vt)
+        exit(-1);
 
     setlocale(LC_ALL, ""); // set from environment
 

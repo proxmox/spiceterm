@@ -10,7 +10,7 @@ SOURCES=screen.c event_loop.c input.c spiceterm.c auth-pve.c
 all: ${PROGRAMS}
 
 spiceterm: ${SOURCES} ${HEADERS} spiceterm.c 
-	gcc -Werror -Wall -Wtype-limits ${SOURCES} -g -O2 -o $@ -lutil $(shell pkg-config --cflags gdk-3.0) $(shell pkg-config --cflags --libs gthread-2.0,spice-protocol,spice-server,gdk-3.0)
+	gcc -Werror -Wall -Wtype-limits ${SOURCES} -g -O2 -o $@ -lutil $(shell pkg-config) $(shell pkg-config --cflags --libs gthread-2.0,spice-protocol,spice-server)
 
 keysyms.h: genkeysym.pl
 	./genkeysym.pl >$@

@@ -710,20 +710,28 @@ add_keymap_entry(guint8 mask, guint8 keycode, guint keysym, guint unicode)
     }
 }
 
-static void 
+
+static gboolean
 parse_keymap(const char *language)
 {
     char line[1024];
     int len;
-
-    printf("parse keymap %s\n", language);
+    static GRegex *uregex = NULL;
+    name2keysym_t tmap = { .keysym = 0, .unicode = 0 };
+ 
+    if (uregex == NULL) {
+        if (!(uregex = g_regex_new("^U\\+?[a-fA-F0-9]{4,6}$", 0, 0, NULL))) {
+            fprintf(stderr, "unable to compile regex\n");
+            return FALSE;
+        }
+    }
 
     char *filename = g_strdup_printf("/usr/share/kvm/keymaps/%s", language);
     FILE *f = fopen(filename, "r");
     g_free(filename);
     if (!f) {
 	fprintf(stderr, "Could not read keymap file: '%s'\n", language);
-        return;
+        return FALSE;
     }
 
     for(;;) {
@@ -737,18 +745,33 @@ parse_keymap(const char *language)
 	if (!strncmp(line, "map ", 4))
 	    continue;
 	if (!strncmp(line, "include ", 8)) {
-	    parse_keymap(line + 8);
+	    if (!parse_keymap(line + 8))
+                return FALSE;
         } else {
-            printf("LINE: %s\n", line);
             char *tok = strtok(line, " ");
-            if (!tok) {
-                fprintf(stderr, "Warning: unknown keysym\n");
-                g_assert_not_reached();
-            }
+            if (!tok)
+                continue;
+
             const name2keysym_t *map = lookup_keysym(tok);
+            if (!map && g_regex_match(uregex, tok, 0, NULL)) {
+                char *hex = tok[1] == '+' ? tok + 2 : tok + 1;
+                long int uc = strtol(hex, NULL, 16);
+                if ((uc >= 0x0020 && uc <= 0x007e) ||
+                    (uc >= 0x00a0 && uc <= 0x00ff)) {
+                    // Latin 1
+                    tmap.keysym = uc;
+                    tmap.unicode = uc;
+                    map = &tmap;
+                   
+                } else if (uc >= 0x0100 && uc <= 0x010FFFF) {
+                    tmap.keysym = uc + 0x01000000;
+                    tmap.unicode = uc;
+                    map = &tmap;
+                }
+            }
             if (!map) {
                 fprintf(stderr, "Warning: unknown keysym '%s'\n", tok);
-                g_assert_not_reached();
+                continue;
             } 
 
             guint8 mask = 0;
@@ -765,22 +788,20 @@ parse_keymap(const char *language)
                 } else if (!strcmp(tok, "addupper")) {
                     addupper = TRUE;
                 } else if (!strcmp(tok, "inhibit")) {
-                    // fixme
+                    // ignore
                 } else if (!strcmp(tok, "localstate")) {
-                    //skip
+                    // ignore
                 } else {
                     char *endptr;
                     errno = 0;
                     keycode = strtol(tok, &endptr, 0);
                     if (errno != 0 || *endptr != '\0' || keycode >= 255) {
-                        printf("got unknown modifier '%s' %d\n", tok, keycode);
-                        g_assert_not_reached();
+                        fprintf(stderr, "got unknown modifier '%s' %d\n", 
+                                tok, keycode);
+                        continue;
                     }
-
                 }
             }
-
-            printf("got keycode %u ==> %02x:%d\n", map->keysym, mask, keycode);
 
             add_keymap_entry(mask, keycode, map->keysym, map->unicode);
             if (addupper) {
@@ -795,6 +816,8 @@ parse_keymap(const char *language)
             }
         }
     }
+
+    return TRUE;
 }
 
 spiceTerm *
@@ -804,7 +827,10 @@ spiceterm_create(uint32_t width, uint32_t height, SpiceTermOptions *opts)
     SpiceScreen *spice_screen = spice_screen_new(core, width, height, opts);
 
     keymap = g_hash_table_new(g_int_hash, g_int_equal);
-    parse_keymap(opts->keymap ?  opts->keymap : "en-us");
+    
+    if (!parse_keymap(opts->keymap ?  opts->keymap : "en-us")) {
+        return NULL;
+    }
 
     spice_screen->image_cache = g_hash_table_new(g_int_hash, g_int_equal);
 
