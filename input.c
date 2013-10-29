@@ -28,8 +28,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <string.h>
+#include <errno.h>
 
 #include "spiceterm.h"
+#include "keysyms.h"
 
 #include <glib.h>
 #include <spice.h>
@@ -53,12 +55,41 @@ my_kbd_get_leds(SpiceKbdInstance *sin)
     return 0;
 }
 
+#define MOD_MASK_SHIFT (1<<0)
+#define MOD_MASK_ALTGR (1<<1)
+#define MOD_MASK_NUMLOCK (1<<2)
+
+
+typedef struct keymap_entry {
+    gint hkey; //(mask << 8 || keycode)
+    guint8 mask; // MOD_MASK_*
+    guint8 keycode;
+    guint keysym;
+    guint unicode;
+} keymap_entry;
+
+static GHashTable *keymap = NULL;
+
 #define KBD_MOD_CONTROL_L_FLAG (1<<0)
 #define KBD_MOD_CONTROL_R_FLAG (1<<1)
 #define KBD_MOD_SHIFT_L_FLAG (1<<2)
 #define KBD_MOD_SHIFT_R_FLAG (1<<3)
+#define KBD_MOD_ALTGR_FLAG (1<<4)
+#define KBD_MOD_NUMLOCK (1<<5)
+#define KBD_MOD_SHIFTLOCK (1<<6)
 
 static int kbd_flags = 0;
+
+static const name2keysym_t * 
+lookup_keysym(const char *name)
+{
+    const name2keysym_t *p;
+    for(p = name2keysym; p->name != NULL; p++) {
+        if (!strcmp(p->name, name))
+            return p;
+    }
+    return NULL;
+}
 
 static void
 my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
@@ -70,7 +101,7 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
     static int e0_mode = 0;
 
     DPRINTF(1, "enter frag=%02x flags=%08x", frag, kbd_flags);
-
+    
     if (e0_mode) {
         e0_mode = 0;
         switch (frag) {
@@ -79,6 +110,12 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
             break;
         case  0x9d: // release Control_R
             kbd_flags &= ~KBD_MOD_CONTROL_R_FLAG;
+            break;
+        case 0x38: // press ALTGR
+            kbd_flags |= KBD_MOD_ALTGR_FLAG;
+            break;
+        case  0xb8: // release ALTGR
+            kbd_flags &= ~KBD_MOD_ALTGR_FLAG;
             break;
         case 0x47: // press Home
             esc = "OH";
@@ -100,6 +137,9 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
             break;
         case 0x52: // press INSERT
             esc = "[2~";
+            break;
+        case 0x53: // press Delete
+            esc = "[3~";
             break;
         case 0x49: // press PAGE_UP
             if (kbd_flags & (KBD_MOD_SHIFT_L_FLAG|KBD_MOD_SHIFT_R_FLAG)) {
@@ -136,28 +176,50 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
             kbd_flags &= ~KBD_MOD_SHIFT_R_FLAG;
             break;
         case 0x52: // press KP_INSERT
-            esc = "[2~";
+            if (!(kbd_flags & KBD_MOD_NUMLOCK))
+                esc = "[2~";
             break;
         case 0x53: // press KP_Delete
-            esc = "[3~";
+            if (!(kbd_flags & KBD_MOD_NUMLOCK))
+                esc = "[3~";
             break;
-        case 0x47: // press KP_Home
-            esc = "OH";
+        case 0x45: // press Numlock
+            if (kbd_flags & KBD_MOD_NUMLOCK) {
+                kbd_flags &= ~KBD_MOD_NUMLOCK;
+            } else {
+                kbd_flags |= KBD_MOD_NUMLOCK;
+            }
+            break;
+        case 0x3a: // press Shiftlock
+            if (kbd_flags & KBD_MOD_SHIFTLOCK) {
+                kbd_flags &= ~KBD_MOD_SHIFTLOCK;
+            } else {
+                kbd_flags |= KBD_MOD_SHIFTLOCK;
+            }
+            break;
+         case 0x47: // press KP_Home
+            if (!(kbd_flags & KBD_MOD_NUMLOCK))
+                esc = "OH";
             break;
         case 0x4f: // press KP_END
-            esc = "OF";
+            if (!(kbd_flags & KBD_MOD_NUMLOCK))
+                esc = "OF";
             break;
         case 0x48: // press KP_UP
-            esc = "OA";
+            if (!(kbd_flags & KBD_MOD_NUMLOCK))
+                esc = "OA";
             break;
         case 0x50: // press KP_DOWN
-            esc = "OB";
+            if (!(kbd_flags & KBD_MOD_NUMLOCK))
+                esc = "OB";
             break;
         case 0x4b: // press KP_LEFT
-            esc = "OD";
+            if (!(kbd_flags & KBD_MOD_NUMLOCK))
+                esc = "OD";
             break;
         case 0x4d: // press KP_RIGHT
-            esc = "OC";
+            if (!(kbd_flags & KBD_MOD_NUMLOCK))
+                esc = "OC";
             break;
         case 0x3b: // press F1
             esc = "OP";
@@ -208,45 +270,59 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
         }
 
         spiceterm_update_watch_mask(vt, TRUE);
-    }
+    } else if (frag < 128) {
 
+        guint mask = 0;
+        if (kbd_flags & (KBD_MOD_SHIFT_L_FLAG|KBD_MOD_SHIFT_R_FLAG)) {
+            mask |= MOD_MASK_SHIFT;
+        } 
+        if (kbd_flags & KBD_MOD_SHIFTLOCK) {
+            if (mask & MOD_MASK_SHIFT) {
+                mask &= ~MOD_MASK_SHIFT;
+            } else {
+                mask |= MOD_MASK_SHIFT;
+            }
+        }
+        if (kbd_flags & KBD_MOD_ALTGR_FLAG) {
+            mask |= MOD_MASK_ALTGR;
+        }
+        if (kbd_flags & KBD_MOD_NUMLOCK) {
+            mask |= MOD_MASK_NUMLOCK;
+        }
+
+
+        gint hkey = mask << 8 | (frag & 127);
+        keymap_entry *e = (keymap_entry *)g_hash_table_lookup(keymap, &hkey);
+        if (!e && (kbd_flags & KBD_MOD_NUMLOCK)) {
+            mask &= ~ MOD_MASK_NUMLOCK;
+            hkey = mask << 8 | (frag & 127);
+            e = (keymap_entry *)g_hash_table_lookup(keymap, &hkey);
+        }
+
+        if (e && e->unicode) {
+            guint32 uc = e->unicode;
+            gchar buf[32];
+            guint8 len;
+            if (uc && ((len = g_unichar_to_utf8(uc, buf)) > 0)) {
+                if (kbd_flags & (KBD_MOD_CONTROL_L_FLAG|KBD_MOD_CONTROL_R_FLAG)) {
+                    if (buf[0] >= 'a' && buf[0] <= 'z') {
+                        uint8_t ctrl[1] = { buf[0] - 'a' + 1 };
+                        spiceterm_respond_data(vt, 1, ctrl);
+                        spiceterm_update_watch_mask(vt, TRUE);
+                    } else if (buf[0] >= 'A' && buf[0] <= 'Z') {
+                        uint8_t ctrl[1] = { buf[0] - 'A' + 1 };
+                        spiceterm_respond_data(vt, 1, ctrl);
+                        spiceterm_update_watch_mask(vt, TRUE);
+                    }
+                } else {
+                    spiceterm_respond_data(vt, len, (uint8_t *)buf);
+                    spiceterm_update_watch_mask(vt, TRUE);
+                }
+            }
+        }
+
+    }
     DPRINTF(1, "leave frag=%02x flags=%08x", frag, kbd_flags);
-    return;
-}
-
-static void
-my_kbd_push_utf8(SpiceKbdInstance *sin, uint32_t size, uint8_t *data)
-{
-    spiceTerm *vt = SPICE_CONTAINEROF(sin, spiceTerm, keyboard_sin);
-
-    DPRINTF(1, " size=%d data[0]=%02x", size, data[0]);
-    
-    if (kbd_flags & (KBD_MOD_CONTROL_L_FLAG|KBD_MOD_CONTROL_R_FLAG)) {
-        if (size != 1) return;
-        if (data[0] >= 'a' && data[0] <= 'z') {
-            uint8_t buf[1] = { data[0] - 'a' + 1 };
-            spiceterm_respond_data(vt, 1, buf);
-
-        } else if (data[0] >= 'A' && data[0] <= 'Z') {
-            uint8_t buf[1] = { data[0] - 'A' + 1 };
-            spiceterm_respond_data(vt, 1, buf);           
-        }
-    } else {
-        if (size == 1 && data[0] == 0x7f) {
-            /* use an escape sequence for DELETE, else it behaves like BACKSPACE */
-            spiceterm_respond_esc(vt, "[3~");
-        } else {
-            spiceterm_respond_data(vt, size, data);
-        }
-    }
-    
-    if (vt->y_displ != vt->y_base) {
-        vt->y_displ = vt->y_base;
-        spiceterm_refresh(vt);
-    }
-
-    spiceterm_update_watch_mask(vt, TRUE);
-
     return;
 }
 
@@ -257,7 +333,6 @@ static SpiceKbdInterface my_keyboard_sif = {
     .base.minor_version = SPICE_INTERFACE_KEYBOARD_MINOR,
     .push_scan_freg     = my_kbd_push_key,
     .get_leds           = my_kbd_get_leds,
-    .push_utf8          = my_kbd_push_utf8,
 };
 
 
@@ -619,14 +694,118 @@ static SpiceCharDeviceInterface my_vdagent_sif = {
     .read               = vmc_read,
 };
 
+static void 
+add_keymap_entry(guint8 mask, guint8 keycode, guint keysym, guint unicode)
+{
+    keymap_entry *e = g_new0(keymap_entry, 1);
+    e->mask = mask;
+    e->keysym = keysym;
+    e->unicode = unicode;
+    e->keycode = keycode;
+    e->hkey = mask << 8 | (keycode & 255);
+
+    // only insert first mapping (other are most likely dead keys)
+    if (!g_hash_table_lookup(keymap, &e->hkey)) {
+        g_hash_table_insert(keymap, &e->hkey, e);
+    }
+}
+
+static void 
+parse_keymap(const char *language)
+{
+    char line[1024];
+    int len;
+
+    printf("parse keymap %s\n", language);
+
+    char *filename = g_strdup_printf("/usr/share/kvm/keymaps/%s", language);
+    FILE *f = fopen(filename, "r");
+    g_free(filename);
+    if (!f) {
+	fprintf(stderr, "Could not read keymap file: '%s'\n", language);
+        return;
+    }
+
+    for(;;) {
+	if (fgets(line, 1024, f) == NULL)
+            break;
+        len = strlen(line);
+        if (len > 0 && line[len - 1] == '\n')
+            line[len - 1] = '\0';
+        if (line[0] == '#' || line[0] == '\0')
+	    continue;
+	if (!strncmp(line, "map ", 4))
+	    continue;
+	if (!strncmp(line, "include ", 8)) {
+	    parse_keymap(line + 8);
+        } else {
+            printf("LINE: %s\n", line);
+            char *tok = strtok(line, " ");
+            if (!tok) {
+                fprintf(stderr, "Warning: unknown keysym\n");
+                g_assert_not_reached();
+            }
+            const name2keysym_t *map = lookup_keysym(tok);
+            if (!map) {
+                fprintf(stderr, "Warning: unknown keysym '%s'\n", tok);
+                g_assert_not_reached();
+            } 
+
+            guint8 mask = 0;
+            guint keycode = 0;
+            gboolean addupper = FALSE;
+ 
+            while ((tok = strtok(NULL, " "))) {
+                if (!strcmp(tok, "shift")) {
+                   mask |= MOD_MASK_SHIFT;
+                } else if (!strcmp(tok, "numlock")) {
+                    mask |= MOD_MASK_NUMLOCK;
+                } else if (!strcmp(tok, "altgr")) {
+                    mask |= MOD_MASK_ALTGR;
+                } else if (!strcmp(tok, "addupper")) {
+                    addupper = TRUE;
+                } else if (!strcmp(tok, "inhibit")) {
+                    // fixme
+                } else if (!strcmp(tok, "localstate")) {
+                    //skip
+                } else {
+                    char *endptr;
+                    errno = 0;
+                    keycode = strtol(tok, &endptr, 0);
+                    if (errno != 0 || *endptr != '\0' || keycode >= 255) {
+                        printf("got unknown modifier '%s' %d\n", tok, keycode);
+                        g_assert_not_reached();
+                    }
+
+                }
+            }
+
+            printf("got keycode %u ==> %02x:%d\n", map->keysym, mask, keycode);
+
+            add_keymap_entry(mask, keycode, map->keysym, map->unicode);
+            if (addupper) {
+                gchar uc = g_ascii_toupper(line[0]);
+                if (uc != line[0]) {
+                    char ucname[] = { uc, '\0' }; 
+                    if ((map = lookup_keysym(ucname))) {
+                        add_keymap_entry(mask|MOD_MASK_SHIFT, keycode, 
+                                         map->keysym, map->unicode);
+                    }
+                }
+            }
+        }
+    }
+}
+
 spiceTerm *
 spiceterm_create(uint32_t width, uint32_t height, SpiceTermOptions *opts)
 {
     SpiceCoreInterface *core = basic_event_loop_init();
     SpiceScreen *spice_screen = spice_screen_new(core, width, height, opts);
 
-    //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
-        
+    keymap = g_hash_table_new(g_int_hash, g_int_equal);
+    parse_keymap(opts->keymap ?  opts->keymap : "en-us");
+
     spice_screen->image_cache = g_hash_table_new(g_int_hash, g_int_equal);
 
     spiceTerm *vt = (spiceTerm *)calloc (sizeof(spiceTerm), 1);

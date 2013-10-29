@@ -28,6 +28,7 @@ typedef struct SpiceTermOptions {
     guint timeout;
     int port;
     char *addr;
+    char *keymap;
     gboolean noauth;
     gboolean sasl;
 } SpiceTermOptions;

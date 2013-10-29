@@ -1613,6 +1613,7 @@ spiceterm_print_usage(const char *msg)
     fprintf(stderr, "  --addr <addr>        Bind to address <addr>\n");
     fprintf(stderr, "  --sasl               Enable SASL based authentication\n");
     fprintf(stderr, "  --noauth             Disable authentication\n");
+    fprintf(stderr, "  --keymap             Spefify keymap (uses kvm keymap files)\n");
 }
 
 int
@@ -1641,12 +1642,13 @@ main (int argc, char** argv)
         { "permissions", required_argument, 0, 'P' },
         { "port", required_argument, 0, 'p' },
         { "addr", required_argument, 0, 'a' },
+        { "keymap", required_argument, 0, 'k' },
         { "noauth", no_argument, 0, 'n' },
         { "sasl", no_argument, 0, 's' },
         { NULL, 0, 0, 0 },
     };
 
-    while ((c = getopt_long(argc, argv, "nst:a:p:P:", long_options, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "nkst:a:p:P:", long_options, NULL)) != -1) {
         
         switch (c) {
         case 'n':
@@ -1654,6 +1656,9 @@ main (int argc, char** argv)
             break;
         case 's':
             opts.sasl = TRUE;
+            break;
+        case 'k':
+            opts.keymap = optarg;
             break;
         case 'A':
             pve_auth_set_path(optarg);
