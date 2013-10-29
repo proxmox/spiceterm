@@ -183,8 +183,8 @@ main (int argc, char** argv)
   font_add_glyph (empty);
 
   /* font load order is only important if glyphs are redefined */
-  load_psf_font ("/usr/share/consolefonts/default8x16.psf.gz", 1);  /* vga default */
   load_psf_font ("/usr/share/consolefonts/lat1u-16.psf.gz", 0);     /* Latin-1 */
+  load_psf_font ("/usr/share/consolefonts/default8x16.psf.gz", 1);  /* vga default */
   load_psf_font ("/usr/share/consolefonts/lat2u-16.psf.gz", 0);     /* Latin-2 */
   load_psf_font ("/usr/share/consolefonts/lat4u-16.psf.gz", 0);     /* Baltic */
 
