@@ -12,8 +12,14 @@ all: ${PROGRAMS}
 spiceterm: ${SOURCES} ${HEADERS} spiceterm.c 
 	gcc -Werror -Wall -Wtype-limits ${SOURCES} -g -O2 -o $@ -lutil $(shell pkg-config) $(shell pkg-config --cflags --libs gthread-2.0,spice-protocol,spice-server)
 
+genfont: genfont.c
+	gcc -g -O2 -o $@ genfont.c -Wall -D_GNU_SOURCE -lz
+
 keysyms.h: genkeysym.pl
 	./genkeysym.pl >$@
+
+glyphs.h: genfont
+	./genfont > glyphs.h
 
 .PHONY: test
 test: spiceterm
