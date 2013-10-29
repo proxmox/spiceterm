@@ -18,7 +18,8 @@ genfont: genfont.c
 keysyms.h: genkeysym.pl
 	./genkeysym.pl >$@
 
-glyphs.h: genfont
+.PHONY: glyphs
+glyphs: genfont
 	./genfont > glyphs.h
 
 .PHONY: test

@@ -190,25 +190,22 @@ main (int argc, char** argv)
 
   load_psf_font ("/usr/share/consolefonts/iso07.f16.psf.gz", 0);    /* Greek */
   load_psf_font ("/usr/share/consolefonts/Goha-16.psf.gz", 0);      /* Ethiopic */
+  load_psf_font ("/usr/share/consolefonts/Arabic-Fixed16.psf.gz", 0);      /* Arabic */
 
-  /* fixme: Arabic, Japanese letters ? */
+  /* fixme: Japanese letters ? */
 
-  if (0) {
-    glob("/usr/share/consolefonts/*", GLOB_ERR, NULL, &globbuf);
+  glob("/usr/share/consolefonts/*", GLOB_ERR, NULL, &globbuf);
 
-    int i;
-    for (i = 0; i < globbuf.gl_pathc; i++) {
+  int i;
+  for (i = 0; i < globbuf.gl_pathc; i++) {
       int pc = vt_font_size;
       load_psf_font (globbuf.gl_pathv[i], 0);
       if (vt_font_size > pc) {
-	printf ("TEST: %s %d\n", globbuf.gl_pathv[i], vt_font_size - pc);
+          //fprintf(stderr, "TEST: %s %d\n", globbuf.gl_pathv[i], vt_font_size - pc);
       }
-    }
-  } else {
-
-    print_glyphs ();
-
   }
+
+  print_glyphs ();
 
   exit (0);
 }
