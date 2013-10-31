@@ -32,11 +32,16 @@ keysyms.h: genkeysym.pl
 glyphs: genfont
 	./genfont > glyphs.h
 
+spiceterm.1: spiceterm.pod
+	rm -f $@
+	pod2man -n $< -s 1 -r ${VERSION} <$< >$@
+
 .PHONY: install
-install: spiceterm
+install: spiceterm spiceterm.1
 	mkdir -p ${DESTDIR}/usr/share/doc/${PACKAGE}
 	install -m 0644 copyright ${DESTDIR}/usr/share/doc/${PACKAGE}
 	mkdir -p ${DESTDIR}/usr/share/man/man1
+	install -m 0644 spiceterm.1 ${DESTDIR}/usr/share/man/man1
 	mkdir -p ${DESTDIR}/usr/bin
 	install -s -m 0755 spiceterm ${DESTDIR}/usr/bin
 
@@ -62,4 +67,4 @@ distclean: clean
 
 .PHONY: clean
 clean:
-	rm -rf *~ ${PROGRAMS} build *.deb *.changes
+	rm -rf *~ ${PROGRAMS} build *.deb *.changes genfont

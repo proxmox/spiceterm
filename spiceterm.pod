@@ -1,0 +1,101 @@
+=head1 NAME
+                                          
+spiceterm - SPICE Terminal Emulator
+
+=head1 SYNOPSIS
+
+ spiceterm [OPTIONS] [-- <command> [args]]
+
+  --timeout <seconds>  Wait this time before aborting (default 
+                       is 10 seconds)
+  --authpath <path>    Authentication path  (PVE AUTH)
+  --permission <perm>  Required permissions (PVE AUTH)
+  --port <port>        Bind to port <port>
+  --addr <addr>        Bind to address <addr>
+  --sasl               Enable SASL based authentication
+  --noauth             Disable authentication
+  --keymap             Spefify keymap (uses kvm keymap files)
+
+=head1 DESCRIPTION
+
+spiceterm is a full featured terminal emulator and exports the display
+using the SPICE protocol. Implements a 'xterm' compatible terminal.
+
+=head2 Features
+
+=over
+
+=item xterm/linux compatible
+
+=item cut and paste (vdagent)
+
+=item screen resize (vdagent)
+
+=item SASL support
+
+=item use TLS to encrypt all traffic
+
+=item use Proxmox VE authentication
+
+=back
+
+=head1 Authentication
+
+You can disable authentication using the C<--noauth> option. 
+
+Please use C<--sasl> if you want to connect with username and password
+(password if verified using the Proxmox VE auth framework).
+
+Ticket authentication is default, and you should pass the ticket using
+the C<SPICE_TICKET> environment variable.
+
+ # SPICE_TICKET=<PASSWD ./spiceterm
+
+=head1 EXAMPLES
+
+By default we start a simple shell (/bin/sh)
+
+ # spiceterm --noauth 
+
+You can then connect with remote-viewer
+
+ # remote-viewer spice://localhost?tls-port=5900
+
+Note: spiceterm uses a short timeout and exit if no client connects
+(for security reasons).
+
+You can also specify the program to execute, for example a login screen
+
+ # spiceterm --noauth -- /bin/login & remote-viewer spice://localhost?tls-port=5900
+
+Or enter a OpenVZ container console
+
+ # ./spiceterm --noauth -- vzctl enter 100  
+
+
+=head1 AUTHOR
+
+Dietmar Maurer <dietmar@proxmox.com>
+
+Many thanks to Proxmox Server Solutions (www.proxmox.com) for sponsoring 
+this work.
+
+=head1 COPYRIGHT AND DISCLAIMER
+
+Copyright (C) 2013 Proxmox Server Solutions GmbH
+
+Copyright: spiceterm is under GNU GPL, the GNU General Public License.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
