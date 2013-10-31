@@ -22,6 +22,13 @@ keysyms.h: genkeysym.pl
 glyphs: genfont
 	./genfont > glyphs.h
 
+.PHONY: install
+install:
+	mkdir -p ${DESTDIR}/usr/share/doc/${PACKAGE}
+	mkdir -p ${DESTDIR}/usr/share/man/man1
+	mkdir -p ${DESTDIR}/usr/bin
+	install -s -m 0755 spiceterm ${DESTDIR}/usr/bin
+
 .PHONY: test
 test: spiceterm
 	./spiceterm --noauth --keymap de & remote-viewer spice://localhost?tls-port=5900
