@@ -1,3 +1,13 @@
+RELEASE=3.1
+
+PACKAGE=spiceterm
+VERSION=1.0
+PACKAGERELEASE=1
+
+ARCH:=$(shell dpkg-architecture -qDEB_BUILD_ARCH)
+GITVERSION:=$(shell cat .git/refs/heads/master)
+
+DEB=${PACKAGE}_${VERSION}-${PACKAGERELEASE}_${ARCH}.deb
 
 PROGRAMS=spiceterm
 
@@ -23,11 +33,24 @@ glyphs: genfont
 	./genfont > glyphs.h
 
 .PHONY: install
-install:
+install: spiceterm
 	mkdir -p ${DESTDIR}/usr/share/doc/${PACKAGE}
+	install -m 0644 copyright ${DESTDIR}/usr/share/doc/${PACKAGE}
 	mkdir -p ${DESTDIR}/usr/share/man/man1
 	mkdir -p ${DESTDIR}/usr/bin
 	install -s -m 0755 spiceterm ${DESTDIR}/usr/bin
+
+.PHONY: deb
+${DEB} deb:
+	make clean
+	rsync -a . --exclude build build
+	echo "git clone git://git.proxmox.com/git/spiceterm.git\\ngit checkout ${GITVERSION}" > build/debian/SOURCE
+	cd build; dpkg-buildpackage -rfakeroot -b -us -uc
+	lintian ${DEB}
+
+.PHONY: dinstall
+dinstall: ${DEB}
+	dpkg -i ${DEB}
 
 .PHONY: test
 test: spiceterm
@@ -39,4 +62,4 @@ distclean: clean
 
 .PHONY: clean
 clean:
-	rm -rf *~ ${PROGRAMS}
+	rm -rf *~ ${PROGRAMS} build *.deb *.changes

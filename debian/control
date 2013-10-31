@@ -1,0 +1,13 @@
+Source: spiceterm
+Section: admin
+Priority: extra
+Maintainer: Proxmox Support Team <support@proxmox.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.3
+
+Package: spiceterm
+Architecture: any
+Depends: pve-qemu-kvm, pve-libspice-server1, ${shlibs:Depends}, ${misc:Depends}
+Description: SPICE Terminal Emulator
+ With spiceterm you can start commands and export its standard input and
+ output to any SPICE client (simulating a xterm Terminal).
