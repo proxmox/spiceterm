@@ -49,7 +49,15 @@ Please use C<--sasl> if you want to connect with username and password
 Ticket authentication is default, and you should pass the ticket using
 the C<SPICE_TICKET> environment variable.
 
- # SPICE_TICKET=<PASSWD ./spiceterm
+ # SPICE_TICKET=PASSWD ./spiceterm
+
+=head1 Keyboard Layout
+
+Due to SPICE protocol limitation, you need to specify the keyboard
+layout used by the client. We currently use the keymap files from kvm
+(/usr/share/kvm/keymaps/).
+
+ # spiceterm --keymap de
 
 =head1 EXAMPLES
 
@@ -66,7 +74,7 @@ Note: spiceterm uses a short timeout and exit if no client connects
 
 You can also specify the program to execute, for example a login screen
 
- # spiceterm --noauth -- /bin/login & remote-viewer spice://localhost?tls-port=5900
+ # spiceterm --noauth -- /bin/login
 
 Or enter a OpenVZ container console
 
@@ -76,9 +84,6 @@ Or enter a OpenVZ container console
 =head1 AUTHOR
 
 Dietmar Maurer <dietmar@proxmox.com>
-
-Many thanks to Proxmox Server Solutions (www.proxmox.com) for sponsoring 
-this work.
 
 =head1 COPYRIGHT AND DISCLAIMER
 
