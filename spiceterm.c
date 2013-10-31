@@ -1684,10 +1684,10 @@ main (int argc, char** argv)
     }
  
     if (optind < argc) {
-        command = argv[optind+1];
-        cmdargv = &argv[optind+1];
+        command = argv[optind];
+        cmdargv = &argv[optind];
     }
-    
+
     spiceTerm *vt = spiceterm_create(744, 400, &opts);
     if (!vt)
         exit(-1);
