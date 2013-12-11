@@ -77,6 +77,7 @@ static GHashTable *keymap = NULL;
 #define KBD_MOD_ALTGR_FLAG (1<<4)
 #define KBD_MOD_NUMLOCK (1<<5)
 #define KBD_MOD_SHIFTLOCK (1<<6)
+#define KBD_MOD_ALT_FLAG (1<<7)
 
 static int kbd_flags = 0;
 
@@ -174,6 +175,12 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
             break;
         case 0xb6: // release Shift_R
             kbd_flags &= ~KBD_MOD_SHIFT_R_FLAG;
+            break;
+        case 0x38: // press ALT
+            kbd_flags |= KBD_MOD_ALT_FLAG;
+            break;
+        case  0xb8: // release ALT
+            kbd_flags &= ~KBD_MOD_ALT_FLAG;
             break;
         case 0x52: // press KP_INSERT
             if (!(kbd_flags & KBD_MOD_NUMLOCK))
@@ -304,7 +311,9 @@ my_kbd_push_key(SpiceKbdInstance *sin, uint8_t frag)
             gchar buf[32];
             guint8 len;
             if (uc && ((len = g_unichar_to_utf8(uc, buf)) > 0)) {
-                if (kbd_flags & (KBD_MOD_CONTROL_L_FLAG|KBD_MOD_CONTROL_R_FLAG)) {
+                /* NOTE: window client send CONTROL_L/ALTGR instead of simple ALTGR */
+                if ((kbd_flags & (KBD_MOD_CONTROL_L_FLAG|KBD_MOD_CONTROL_R_FLAG)) &&
+                    !(kbd_flags & KBD_MOD_ALTGR_FLAG)) {
                     if (buf[0] >= 'a' && buf[0] <= 'z') {
                         uint8_t ctrl[1] = { buf[0] - 'a' + 1 };
                         spiceterm_respond_data(vt, 1, ctrl);
