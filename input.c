@@ -704,10 +704,7 @@ add_keymap_entry(guint8 mask, guint8 keycode, guint keysym, guint unicode)
     e->keycode = keycode;
     e->hkey = mask << 8 | (keycode & 255);
 
-    // only insert first mapping (other are most likely dead keys)
-    if (!g_hash_table_lookup(keymap, &e->hkey)) {
-        g_hash_table_insert(keymap, &e->hkey, e);
-    }
+    g_hash_table_insert(keymap, &e->hkey, e);
 }
 
 
@@ -751,6 +748,11 @@ parse_keymap(const char *language)
             char *tok = strtok(line, " ");
             if (!tok)
                 continue;
+
+            if (tok[0] == 'd' && tok[1] == 'e' && tok[2] == 'a' && 
+                tok[3] == 'd' && tok[4] == '_') {
+                continue;
+            }
 
             const name2keysym_t *map = lookup_keysym(tok);
             if (!map && g_regex_match(uregex, tok, 0, NULL)) {
