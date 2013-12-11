@@ -819,8 +819,10 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height,
 
     cursor_init();
 
-    spice_screen->conn_timeout_timer = core->timer_add(do_conn_timeout, spice_screen);
-    spice_screen->core->timer_start(spice_screen->conn_timeout_timer, opts->timeout*1000);
+    if (opts->timeout > 0) {
+        spice_screen->conn_timeout_timer = core->timer_add(do_conn_timeout, spice_screen);
+        spice_screen->core->timer_start(spice_screen->conn_timeout_timer, opts->timeout*1000);
+    }
 
     spice_server_add_interface(spice_screen->server, &spice_screen->qxl_instance.base);
 
