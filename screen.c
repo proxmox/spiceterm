@@ -152,10 +152,10 @@ push_command(SpiceScreen *spice_screen, QXLCommandExt *ext)
 {
     int need_wakeup = 1;
 
-    g_mutex_lock(spice_screen->command_mutex);
+    g_mutex_lock(&spice_screen->command_mutex);
 
     while (spice_screen->commands_end - spice_screen->commands_start >= COMMANDS_SIZE) {
-        g_cond_wait(spice_screen->command_cond, spice_screen->command_mutex);
+        g_cond_wait(&spice_screen->command_cond, &spice_screen->command_mutex);
     }
 
     g_assert(spice_screen->commands_end - spice_screen->commands_start < COMMANDS_SIZE);
@@ -168,10 +168,11 @@ push_command(SpiceScreen *spice_screen, QXLCommandExt *ext)
     spice_screen->commands_end++;
 
     if (need_wakeup) {
-        spice_screen->qxl_worker->wakeup(spice_screen->qxl_worker);
+	spice_qxl_wakeup(&spice_screen->qxl_instance);
+        //spice_screen->qxl_worker->wakeup(spice_screen->qxl_worker);
     }
 
-    g_mutex_unlock(spice_screen->command_mutex);
+    g_mutex_unlock(&spice_screen->command_mutex);
 
 }
 
@@ -379,7 +380,6 @@ static void
 create_primary_surface(SpiceScreen *spice_screen, uint32_t width, 
                        uint32_t height)
 {
-    QXLWorker *qxl_worker = spice_screen->qxl_worker;
     QXLDevSurfaceCreate surface = { 0, };
 
     g_assert(height > 0);
@@ -407,7 +407,7 @@ create_primary_surface(SpiceScreen *spice_screen, uint32_t width,
 
     spice_screen->cursor_set = 0;
 
-    qxl_worker->create_primary_surface(qxl_worker, 0, &surface);
+    spice_qxl_create_primary_surface(&spice_screen->qxl_instance, 0, &surface);
 }
 
 QXLDevMemSlot slot = {
@@ -430,9 +430,9 @@ attache_worker(QXLInstance *qin, QXLWorker *_qxl_worker)
     }
  
     spice_screen->qxl_worker = _qxl_worker;
-    spice_screen->qxl_worker->add_memslot(spice_screen->qxl_worker, &slot);
+    spice_qxl_add_memslot(&spice_screen->qxl_instance, &slot);
     create_primary_surface(spice_screen, spice_screen->width, spice_screen->height);
-    spice_screen->qxl_worker->start(spice_screen->qxl_worker);
+    spice_server_vm_start(spice_screen->server);
 }
 
 static void 
@@ -465,7 +465,7 @@ get_command(QXLInstance *qin, struct QXLCommandExt *ext)
     SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
     int res = FALSE;
 
-    g_mutex_lock(spice_screen->command_mutex);
+    g_mutex_lock(&spice_screen->command_mutex);
     
     if ((spice_screen->commands_end - spice_screen->commands_start) == 0) {
         res = FALSE;
@@ -475,12 +475,12 @@ get_command(QXLInstance *qin, struct QXLCommandExt *ext)
     *ext = *spice_screen->commands[spice_screen->commands_start % COMMANDS_SIZE];
     g_assert(spice_screen->commands_start < spice_screen->commands_end);
     spice_screen->commands_start++;
-    g_cond_signal(spice_screen->command_cond);
+    g_cond_signal(&spice_screen->command_cond);
 
     res = TRUE;
 
 ret:
-    g_mutex_unlock(spice_screen->command_mutex);
+    g_mutex_unlock(&spice_screen->command_mutex);
     return res;
 }
 
@@ -489,12 +489,12 @@ discard_pending_commands(SpiceScreen *spice_screen)
 {
     int pos;
 
-    g_mutex_lock(spice_screen->command_mutex);
+    g_mutex_lock(&spice_screen->command_mutex);
     for (pos = spice_screen->commands_start; pos < spice_screen->commands_end; pos++) {
         release_qxl_command_ext(spice_screen->commands[pos % COMMANDS_SIZE]);
     }
     spice_screen->commands_start = spice_screen->commands_end;
-    g_mutex_unlock(spice_screen->command_mutex);
+    g_mutex_unlock(&spice_screen->command_mutex);
 }
 
 static int 
@@ -767,8 +767,8 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height,
     spice_screen->width = width;
     spice_screen->height = height;
 
-    spice_screen->command_cond = g_cond_new();
-    spice_screen->command_mutex = g_mutex_new();
+    g_cond_init(&spice_screen->command_cond);
+    g_mutex_init(&spice_screen->command_mutex);
 
     spice_screen->on_client_connected = client_connected,
     spice_screen->on_client_disconnected = client_disconnected,
@@ -833,16 +833,14 @@ void
 spice_screen_resize(SpiceScreen *spice_screen, uint32_t width,
                     uint32_t height)
 {
-    QXLWorker *qxl_worker = spice_screen->qxl_worker;
-
     if (spice_screen->width == width && spice_screen->height == height) {
         return;
     }
 
     discard_pending_commands(spice_screen);
 
-    qxl_worker->destroy_primary_surface(qxl_worker, 0);
-
+    spice_qxl_destroy_primary_surface(&spice_screen->qxl_instance, 0);
+ 
     create_primary_surface(spice_screen, width, height);
 
     spice_screen_clear(spice_screen, 0, 0, width, height);

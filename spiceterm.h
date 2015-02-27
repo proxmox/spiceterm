@@ -58,8 +58,8 @@ struct SpiceScreen {
     int width;
     int height;
 
-    GCond* command_cond;
-    GMutex* command_mutex;
+    GCond command_cond;
+    GMutex command_mutex;
 
     int commands_end;
     int commands_start;

@@ -1632,9 +1632,7 @@ main (int argc, char** argv)
         .sasl = FALSE,
     };
 
-    g_thread_init(NULL);
-
-    static struct option long_options[] = {
+   static struct option long_options[] = {
         { "timeout", required_argument, 0,  't' },
         { "authpath", required_argument, 0, 'A' },
         { "permissions", required_argument, 0, 'P' },
