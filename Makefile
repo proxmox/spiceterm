@@ -20,7 +20,7 @@ SOURCES=screen.c event_loop.c input.c spiceterm.c auth-pve.c
 all: ${PROGRAMS}
 
 spiceterm: ${SOURCES} ${HEADERS} spiceterm.c 
-	gcc -Werror -Wall -Wtype-limits ${SOURCES} -g -O2 -o $@ -lutil $(shell pkg-config) $(shell pkg-config --cflags --libs gthread-2.0,spice-protocol,spice-server,libsasl2)
+	gcc -Werror -Wall -Wl,-z,relro -Wtype-limits ${SOURCES} -g -O2 -o $@ -lutil $(shell pkg-config) $(shell pkg-config --cflags --libs gthread-2.0,spice-protocol,spice-server,libsasl2)
 
 genfont: genfont.c
 	gcc -g -O2 -o $@ genfont.c -Wall -D_GNU_SOURCE -lz
