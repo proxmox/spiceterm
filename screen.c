@@ -762,7 +762,7 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height,
     char *x509_cacert_file = "/etc/pve/pve-root-ca.pem";
     char *x509_key_password = NULL;
     char *x509_dh_file = NULL;
-    char *tls_ciphers = "DES-CBC3-SHA";    
+    char *tls_ciphers = "HIGH";
 
     spice_screen->width = width;
     spice_screen->height = height;
