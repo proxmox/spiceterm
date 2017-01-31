@@ -46,7 +46,8 @@ install: spiceterm spiceterm.1
 	install -s -m 0755 spiceterm ${DESTDIR}/usr/bin
 
 .PHONY: deb
-${DEB} deb:
+deb: ${DEB}
+${DEB}:
 	make clean
 	rsync -a . --exclude build build
 	echo "git clone git://git.proxmox.com/git/spiceterm.git\\ngit checkout ${GITVERSION}" > build/debian/SOURCE
