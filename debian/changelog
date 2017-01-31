@@ -1,3 +1,9 @@
+spiceterm (2.0-2) unstable; urgency=medium
+
+  * change TLS cipher suite to 'HIGH'
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 31 Jan 2017 13:44:19 +0100
+
 spiceterm (2.0-1) unstable; urgency=medium
 
   * update for debian jessie
