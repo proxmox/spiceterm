@@ -14,13 +14,17 @@ PROGRAMS=spiceterm
 HEADERS=translations.h event_loop.h glyphs.h spiceterm.h keysyms.h
 SOURCES=screen.c event_loop.c input.c spiceterm.c auth-pve.c
 
+PKGS := glib-2.0 gthread-2.0 spice-protocol spice-server libsasl2
+CFLAGS += `pkg-config --cflags $(PKGS)`
+LIBS += `pkg-config --libs $(PKGS)`
+
 #export G_MESSAGES_DEBUG=all 
 #export SPICE_DEBUG=1
 
 all: ${PROGRAMS}
 
 spiceterm: ${SOURCES} ${HEADERS} spiceterm.c 
-	gcc -Werror -Wall -Wl,-z,relro -Wtype-limits ${SOURCES} -g -O2 -o $@ -lutil $(shell pkg-config) $(shell pkg-config --cflags --libs gthread-2.0,spice-protocol,spice-server,libsasl2)
+	gcc -Werror -Wall -Wl,-z,relro -Wtype-limits ${SOURCES} -g -O2 $(CFLAGS) -o $@ -lutil $(LIBS)
 
 genfont: genfont.c
 	gcc -g -O2 -o $@ genfont.c -Wall -D_GNU_SOURCE -lz

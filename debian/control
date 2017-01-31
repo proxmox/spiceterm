@@ -2,7 +2,7 @@ Source: spiceterm
 Section: admin
 Priority: extra
 Maintainer: Proxmox Support Team <support@proxmox.com>
-Build-Depends: debhelper (>= 8.0.0)
+Build-Depends: debhelper (>= 8.0.0), libglib2.0-dev, libsasl2-dev, libspice-protocol-dev, pve-libspice-server-dev
 Standards-Version: 3.9.3
 
 Package: spiceterm
