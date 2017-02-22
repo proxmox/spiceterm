@@ -56,6 +56,9 @@ static int debug = 0;
 
 #define MEM_SLOT_GROUP_ID 0
 
+
+extern unsigned char color_table[];
+
 /* these colours are from linux kernel drivers/char/vt.c */
 /* the default colour table, for VGA+ colour systems */
 int default_red[] = {0x00,0xaa,0x00,0xaa,0x00,0xaa,0x00,0xaa,
@@ -265,12 +268,12 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
         g_assert(fg >= 0 && fg < 16);
         g_assert(bg >= 0 && bg < 16);
 
-        unsigned char fgc_red = default_red[fg];
-        unsigned char fgc_blue = default_blu[fg];
-        unsigned char fgc_green = default_grn[fg];
-        unsigned char bgc_red = default_red[bg];
-        unsigned char bgc_blue = default_blu[bg];
-        unsigned char bgc_green = default_grn[bg];
+        unsigned char fgc_red = default_red[color_table[fg]];
+        unsigned char fgc_blue = default_blu[color_table[fg]];
+        unsigned char fgc_green = default_grn[color_table[fg]];
+        unsigned char bgc_red = default_red[color_table[bg]];
+        unsigned char bgc_blue = default_blu[color_table[bg]];
+        unsigned char bgc_green = default_grn[color_table[bg]];
 
         for (j = 0; j < 16; j++) {
             gboolean ul = (j == 14) && uline;
