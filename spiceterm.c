@@ -1232,7 +1232,11 @@ spiceterm_puts(spiceTerm *vt, const char *buf, int len)
                     vt->utf_char = (vt->utf_char << 6) | (c & 0x3f);
                     vt->utf_count--;
                     if (vt->utf_count == 0) {
-                        tc = vt->utf_char;
+			if (vt->utf_char <= G_MAXUINT16) {
+			    tc = vt->utf_char;
+			} else {
+			    tc = 0;
+			}
                     } else {
                         continue;
                     }
