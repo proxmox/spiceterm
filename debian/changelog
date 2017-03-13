@@ -1,3 +1,11 @@
+spiceterm (3.0-1) unstable; urgency=medium
+
+  * add range check for UTF-8 characters
+
+  * rebuild for PVE 5.0 / Debian Stretch
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 13 Mar 2017 12:17:07 +0100
+
 spiceterm (2.0-2) unstable; urgency=medium
 
   * change TLS cipher suite to 'HIGH'
