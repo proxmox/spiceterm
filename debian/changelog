@@ -1,3 +1,9 @@
+spiceterm (3.0-2) unstable; urgency=medium
+
+  * use color_table to get the correct terminal colors
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 03 May 2017 08:09:13 +0200
+
 spiceterm (3.0-1) unstable; urgency=medium
 
   * add range check for UTF-8 characters
