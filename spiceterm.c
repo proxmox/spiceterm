@@ -865,10 +865,7 @@ spiceterm_putchar(spiceTerm *vt, gunichar2 ch)
             if (vt->esc_buf[0] == 0) {
                 vt->esc_buf[0] = 1;
             }
-            vt->cy -= vt->esc_buf[0];
-            if (vt->cy < 0) {
-                vt->cy = 0;
-            }
+            spiceterm_gotoxy(vt, vt->cx, vt->cy - vt->esc_buf[0]);
             break;
         case 'B':
         case 'e':
@@ -876,10 +873,7 @@ spiceterm_putchar(spiceTerm *vt, gunichar2 ch)
             if (vt->esc_buf[0] == 0) {
                 vt->esc_buf[0] = 1;
             }
-            vt->cy += vt->esc_buf[0];
-            if (vt->cy >= vt->height) {
-                vt->cy = vt->height - 1;
-            }
+            spiceterm_gotoxy(vt, vt->cx, vt->cy + vt->esc_buf[0]);
             break;
         case 'C':
         case 'a':
@@ -887,20 +881,14 @@ spiceterm_putchar(spiceTerm *vt, gunichar2 ch)
             if (vt->esc_buf[0] == 0) {
                 vt->esc_buf[0] = 1;
             }
-            vt->cx += vt->esc_buf[0];
-            if (vt->cx >= vt->width) {
-                vt->cx = vt->width - 1;
-            }
+            spiceterm_gotoxy(vt, vt->cx + vt->esc_buf[0], vt->cy);
             break;
         case 'D':
             /* move cursor left */
             if (vt->esc_buf[0] == 0) {
                 vt->esc_buf[0] = 1;
             }
-            vt->cx -= vt->esc_buf[0];
-            if (vt->cx < 0) {
-                vt->cx = 0;
-            }
+            spiceterm_gotoxy(vt, vt->cx - vt->esc_buf[0], vt->cy);
             break;
         case 'G':
         case '`':
