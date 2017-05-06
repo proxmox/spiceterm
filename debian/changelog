@@ -1,3 +1,9 @@
+spiceterm (3.0-3) unstable; urgency=medium
+
+  * fix bound checking on cursor move
+
+ -- Proxmox Support Team <support@proxmox.com>  Sat, 06 May 2017 08:12:01 +0200
+
 spiceterm (3.0-2) unstable; urgency=medium
 
   * use color_table to get the correct terminal colors
