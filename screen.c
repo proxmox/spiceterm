@@ -294,10 +294,13 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
                 dst += 4;
             }
         }
-        ce = g_new(CachedImage, 1);
-        ce->cache_id = cache_id;
-        ce->bitmap = bitmap;
-        g_hash_table_insert(spice_screen->image_cache, &ce->cache_id, ce);
+
+	if (cache_id != 0) {
+	    ce = g_new(CachedImage, 1);
+	    ce->cache_id = cache_id;
+	    ce->bitmap = bitmap;
+	    g_hash_table_insert(spice_screen->image_cache, &ce->cache_id, ce);
+	}
     }
 
     bbox.left = left; bbox.top = top;
