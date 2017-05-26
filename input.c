@@ -837,8 +837,8 @@ spiceterm_create(uint32_t width, uint32_t height, SpiceTermOptions *opts)
     SpiceCoreInterface *core = basic_event_loop_init();
     SpiceScreen *spice_screen = spice_screen_new(core, width, height, opts);
 
-    keymap = g_hash_table_new(g_int_hash, g_int_equal);
-    
+    keymap = g_hash_table_new_full(g_int_hash, g_int_equal, NULL, g_free);
+
     if (!parse_keymap(opts->keymap ?  opts->keymap : "en-us")) {
         return NULL;
     }
