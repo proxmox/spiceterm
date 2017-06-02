@@ -1,3 +1,15 @@
+spiceterm (2.0-3) stable; urgency=medium
+
+  * fix memory leak caused by unicode characters
+
+  * fix bound checking on cursor move
+
+  * use color_table to get the correct terminal colors
+
+  * add range check for UTF-8 characters
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 02 Jun 2017 10:59:26 +0200
+
 spiceterm (2.0-2) unstable; urgency=medium
 
   * change TLS cipher suite to 'HIGH'

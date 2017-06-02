@@ -2,7 +2,7 @@ RELEASE=4.4
 
 PACKAGE=spiceterm
 VERSION=2.0
-PACKAGERELEASE=2
+PACKAGERELEASE=3
 
 ARCH:=$(shell dpkg-architecture -qDEB_BUILD_ARCH)
 GITVERSION:=$(shell cat .git/refs/heads/master)
