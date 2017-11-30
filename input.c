@@ -713,7 +713,7 @@ add_keymap_entry(guint8 mask, guint8 keycode, guint keysym, guint unicode)
     e->keycode = keycode;
     e->hkey = mask << 8 | (keycode & 255);
 
-    g_hash_table_insert(keymap, &e->hkey, e);
+    g_hash_table_replace(keymap, &e->hkey, e);
 }
 
 
