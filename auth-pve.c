@@ -74,8 +74,8 @@ pve_auth_verify(const char *clientip, const char *username, const char *passwd)
         goto err;
     }
 
-    char buf[8192];
-    char form[8192];
+    char buf[8292];
+    char form[8092];
 
     char *p = form;
     p = urlencode(p, "username");
