@@ -1,12 +1,12 @@
 Source: spiceterm
 Section: admin
-Priority: extra
+Priority: optional
 Maintainer: Proxmox Support Team <support@proxmox.com>
 Build-Depends: debhelper (>= 8.0.0),
                libglib2.0-dev,
                libspice-protocol-dev,
                libspice-server-dev,
-Standards-Version: 3.9.3
+Standards-Version: 4.1.3
 
 Package: spiceterm
 Architecture: any
