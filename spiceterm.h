@@ -30,7 +30,6 @@ typedef struct SpiceTermOptions {
     char *addr;
     char *keymap;
     gboolean noauth;
-    gboolean sasl;
 } SpiceTermOptions;
 
 typedef struct SpiceScreen SpiceScreen;

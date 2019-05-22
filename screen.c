@@ -40,7 +40,6 @@
 #include <spice/macros.h>
 #include <spice/qxl_dev.h>
 #include <spice/vd_agent.h>
-#include <sasl/sasl.h>
 
 #include "glyphs.h"
 
@@ -713,50 +712,6 @@ spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch,
     push_command(spice_screen, &update->ext);
 }
 
-static int 
-sasl_checkpass_cb(sasl_conn_t *conn,
-                  void *context,
-                  const char *user,
-                  const char *pass,
-                  unsigned passlen,
-                  struct propctx *propctx)
-{
-    const void *remoteport = NULL;
-    char *clientip = NULL;
-    if (sasl_getprop(conn, SASL_IPREMOTEPORT, &remoteport) == SASL_OK) {
-        clientip = strtok(g_strdup(remoteport), ";");
-    } else {
-        clientip = g_strdup("unknown");
-    }
-
-    int res = pve_auth_verify(clientip, user, pass);
-
-    g_free(clientip);
-
-    return (res == 0) ? SASL_OK : SASL_NOAUTHZ;
-}
-
-static int 
-sasl_getopt_cb(void *context, const char *plugin_name,
-               const char *option,
-               const char **result, unsigned *len)
-{
-    if (strcmp(option, "mech_list") == 0) {
-        *result = "plain";
-        len = NULL;
-        return SASL_OK;
-    }
-
-    return SASL_FAIL;
-}
-
-typedef int sasl_cb_fn(void);  
-static sasl_callback_t sasl_callbacks[] = {
-    { SASL_CB_GETOPT, (sasl_cb_fn *)sasl_getopt_cb, NULL },
-    { SASL_CB_SERVER_USERDB_CHECKPASS, (sasl_cb_fn *)sasl_checkpass_cb, NULL },
-    { SASL_CB_LIST_END, NULL, NULL },
-};
- 
 SpiceScreen *
 spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, 
                  SpiceTermOptions *opts)
@@ -806,15 +761,9 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height,
     if (opts->noauth) {
         spice_server_set_noauth(server);
     } else {
-        if (opts->sasl) {
-            spice_server_set_sasl(server, 1);
-            spice_server_set_sasl_appname(server, NULL); // enforce pve auth
-            spice_server_set_sasl_callbacks(server, sasl_callbacks);
-        } else {
-            char *ticket = getenv("SPICE_TICKET");
-            if (ticket) {
-                spice_server_set_ticket(server, ticket, 300, 0, 0);
-            }
+        char *ticket = getenv("SPICE_TICKET");
+        if (ticket) {
+            spice_server_set_ticket(server, ticket, 300, 0, 0);
         }
     }
 

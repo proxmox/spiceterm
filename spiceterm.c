@@ -1601,7 +1601,6 @@ spiceterm_print_usage(const char *msg)
     fprintf(stderr, "  --permission <perm>  Required permissions (PVE AUTH)\n");
     fprintf(stderr, "  --port <port>        Bind to port <port>\n");
     fprintf(stderr, "  --addr <addr>        Bind to address <addr>\n");
-    fprintf(stderr, "  --sasl               Enable SASL based authentication\n");
     fprintf(stderr, "  --noauth             Disable authentication\n");
     fprintf(stderr, "  --keymap             Spefify keymap (uses kvm keymap files)\n");
 }
@@ -1621,7 +1620,6 @@ main (int argc, char** argv)
         .port = 5900,
         .addr = NULL,
         .noauth = FALSE,
-        .sasl = FALSE,
     };
 
    static struct option long_options[] = {
@@ -1632,18 +1630,13 @@ main (int argc, char** argv)
         { "addr", required_argument, 0, 'a' },
         { "keymap", required_argument, 0, 'k' },
         { "noauth", no_argument, 0, 'n' },
-        { "sasl", no_argument, 0, 's' },
         { NULL, 0, 0, 0 },
     };
 
-    while ((c = getopt_long(argc, argv, "nkst:a:p:P:", long_options, NULL)) != -1) {
-        
+    while ((c = getopt_long(argc, argv, "nkt:a:p:P:", long_options, NULL)) != -1) {
         switch (c) {
         case 'n':
             opts.noauth = TRUE;
-            break;
-        case 's':
-            opts.sasl = TRUE;
             break;
         case 'k':
             opts.keymap = optarg;

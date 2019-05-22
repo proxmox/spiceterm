@@ -12,7 +12,6 @@ spiceterm - SPICE Terminal Emulator
   --permission <perm>  Required permissions (PVE AUTH)
   --port <port>        Bind to port <port>
   --addr <addr>        Bind to address <addr>
-  --sasl               Enable SASL based authentication
   --noauth             Disable authentication
   --keymap             Spefify keymap (uses kvm keymap files)
 
@@ -31,8 +30,6 @@ using the SPICE protocol. Implements a 'xterm' compatible terminal.
 
 =item screen resize (vdagent)
 
-=item SASL support
-
 =item use TLS to encrypt all traffic
 
 =item use Proxmox VE authentication
@@ -41,10 +38,7 @@ using the SPICE protocol. Implements a 'xterm' compatible terminal.
 
 =head1 Authentication
 
-You can disable authentication using the C<--noauth> option. 
-
-Please use C<--sasl> if you want to connect with username and password
-(password if verified using the Proxmox VE auth framework).
+You can disable authentication using the C<--noauth> option.
 
 Ticket authentication is default, and you should pass the ticket using
 the C<SPICE_TICKET> environment variable.

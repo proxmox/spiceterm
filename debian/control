@@ -4,14 +4,13 @@ Priority: extra
 Maintainer: Proxmox Support Team <support@proxmox.com>
 Build-Depends: debhelper (>= 8.0.0),
                libglib2.0-dev,
-               libsasl2-dev,
                libspice-protocol-dev,
-               pve-libspice-server-dev,
+               libspice-server-dev,
 Standards-Version: 3.9.3
 
 Package: spiceterm
 Architecture: any
-Depends: pve-libspice-server1,
+Depends: libspice-server1,
          pve-qemu-kvm,
          ${misc:Depends},
          ${shlibs:Depends},

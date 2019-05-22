@@ -14,7 +14,7 @@ PROGRAMS=spiceterm
 HEADERS=translations.h event_loop.h glyphs.h spiceterm.h keysyms.h
 SOURCES=screen.c event_loop.c input.c spiceterm.c auth-pve.c
 
-PKGS := glib-2.0 spice-protocol spice-server libsasl2
+PKGS := glib-2.0 spice-protocol spice-server
 CFLAGS += `pkg-config --cflags $(PKGS)`
 LIBS += `pkg-config --libs $(PKGS)`
 
