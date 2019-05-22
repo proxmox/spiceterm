@@ -1,3 +1,9 @@
+spiceterm (3.1-1) pve; urgency=medium
+
+  * rebuild for PVE 6.0 / Debian Buster
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 22 May 2019 17:49:23 +0200
+
 spiceterm (3.0-5) unstable; urgency=medium
 
   * fix add_keymap_entry for non us keymaps
