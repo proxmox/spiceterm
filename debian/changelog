@@ -1,3 +1,9 @@
+spiceterm (3.2-1) bullseye; urgency=medium
+
+  * re-build for Debian 11 Bullseye / Proxmox VE 7
+
+ -- Proxmox Support Team <support@proxmox.com>  Sun, 16 May 2021 18:54:53 +0200
+
 spiceterm (3.1-1) pve; urgency=medium
 
   * rebuild for PVE 6.0 / Debian Buster
