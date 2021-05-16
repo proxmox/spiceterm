@@ -69,7 +69,7 @@ int default_blu[] = {0x00,0x00,0x00,0x00,0xaa,0xaa,0xaa,0xaa,
 
 /* Parts cribbed from spice-display.h/.c/qxl.c */
 
-typedef struct SimpleSpiceUpdate {
+typedef struct __attribute__ ((__packed__)) SimpleSpiceUpdate {
     QXLCommandExt ext; // needs to be first member
     QXLDrawable drawable;
     QXLImage image;
