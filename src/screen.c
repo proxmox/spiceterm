@@ -1,6 +1,6 @@
 /*
 
-     Copyright (C) 2013 Proxmox Server Solutions GmbH
+     Copyright (C) 2013 - 2021 Proxmox Server Solutions GmbH
 
      Copyright: spiceterm is under GNU GPL, the GNU General Public License.
 
@@ -46,7 +46,7 @@
 #include "spiceterm.h"
 
 static int debug = 0;
-    
+
 #define DPRINTF(x, format, ...) { \
     if (x <= debug) { \
         printf("%s: " format "\n" , __FUNCTION__, ## __VA_ARGS__); \
@@ -77,7 +77,7 @@ typedef struct SimpleSpiceUpdate {
     int cache_id; // do not free bitmap if cache_id != 0
 } SimpleSpiceUpdate;
 
-static void 
+static void
 spice_screen_destroy_update(SimpleSpiceUpdate *update)
 {
     if (!update) {
@@ -94,32 +94,32 @@ spice_screen_destroy_update(SimpleSpiceUpdate *update)
     g_free(update);
 }
 
-static void 
+static void
 release_qxl_command_ext(QXLCommandExt *ext)
 {
     g_assert(ext != NULL);
 
     switch (ext->cmd.type) {
-    case QXL_CMD_DRAW:
-        spice_screen_destroy_update((void*)ext);
-        break;
-    case QXL_CMD_SURFACE:
-        free(ext);
-        break;
-    case QXL_CMD_CURSOR: {
-        QXLCursorCmd *cmd = (QXLCursorCmd *)(unsigned long)ext->cmd.data;
-        if (cmd->type == QXL_CURSOR_SET) {
-            free(cmd);
+        case QXL_CMD_DRAW:
+            spice_screen_destroy_update((void*)ext);
+            break;
+        case QXL_CMD_SURFACE:
+            free(ext);
+            break;
+        case QXL_CMD_CURSOR: {
+            QXLCursorCmd *cmd = (QXLCursorCmd *)(unsigned long)ext->cmd.data;
+            if (cmd->type == QXL_CURSOR_SET) {
+                free(cmd);
+            }
+            free(ext);
+            break;
         }
-        free(ext);
-        break;
-    }
-    default:
-        abort();
+        default:
+            abort();
     }
 }
 
-static void 
+static void
 release_resource(QXLInstance *qin, struct QXLReleaseInfoExt release_info)
 {
     QXLCommandExt *ext = (QXLCommandExt*)(unsigned long)release_info.info->id;
@@ -130,7 +130,7 @@ release_resource(QXLInstance *qin, struct QXLReleaseInfoExt release_info)
 
 static int unique = 0x0ffff + 1;
 
-static void 
+static void
 set_cmd(QXLCommandExt *ext, uint32_t type, QXLPHYSICAL data)
 {
     ext->cmd.type = type;
@@ -140,7 +140,7 @@ set_cmd(QXLCommandExt *ext, uint32_t type, QXLPHYSICAL data)
     ext->flags = 0;
 }
 
-static void 
+static void
 simple_set_release_info(QXLReleaseInfo *info, intptr_t ptr)
 {
     info->id = ptr;
@@ -149,7 +149,7 @@ simple_set_release_info(QXLReleaseInfo *info, intptr_t ptr)
 
 /* Note: push_command/get_command are called from different threads */
 
-static void 
+static void
 push_command(SpiceScreen *spice_screen, QXLCommandExt *ext)
 {
     int need_wakeup = 1;
@@ -180,8 +180,12 @@ push_command(SpiceScreen *spice_screen, QXLCommandExt *ext)
 
 /* bitmap are freed, so they must be allocated with g_malloc */
 static SimpleSpiceUpdate *
-spice_screen_update_from_bitmap_cmd(uint32_t surface_id, QXLRect bbox, uint8_t *bitmap, int cache_id)
-{
+spice_screen_update_from_bitmap_cmd(
+    uint32_t surface_id,
+    QXLRect bbox,
+    uint8_t *bitmap,
+    int cache_id
+) {
     SimpleSpiceUpdate *update;
     QXLDrawable *drawable;
     QXLImage *image;
@@ -233,14 +237,16 @@ spice_screen_update_from_bitmap_cmd(uint32_t surface_id, QXLRect bbox, uint8_t *
 }
 
 static SimpleSpiceUpdate *
-spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c, 
-                           int fg, int bg, gboolean uline)
-{
-    int top, left;
-    uint8_t *dst;
+spice_screen_draw_char_cmd(
+    SpiceScreen *spice_screen,
+    int x,
+    int y,
+    int c,
+    int fg,
+    int bg,
+    gboolean uline
+) {
     uint8_t *bitmap = NULL;
-    int bw, bh;
-    int i, j;
     QXLRect bbox;
     int cache_id = 0;
     CachedImage *ce;
@@ -252,15 +258,12 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
         }
     }
 
-    left = x*8;
-    top = y*16;
- 
-    bw       = 8;
-    bh       = 16;
+    int bw = 8, bh = 16;
+    int left = x * bw, top = y * bh;
 
     if (!bitmap) {
-        bitmap = dst = g_malloc(bw * bh * 4);
-        
+        uint8_t *dst = bitmap = g_malloc(bw * bh * 4);
+
         unsigned char *data = vt_font_data + c*16;
         unsigned char d = *data;
 
@@ -274,35 +277,35 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
         unsigned char bgc_blue = default_blu[color_table[bg]];
         unsigned char bgc_green = default_grn[color_table[bg]];
 
-        for (j = 0; j < 16; j++) {
+        for (int j = 0; j < 16; j++) {
             gboolean ul = (j == 14) && uline;
-            for (i = 0; i < 8; i++) {
+            for (int i = 0; i < 8; i++) {
                 if (i == 0) {
                     d=*data;
                     data++;
                 }
                 if (ul || d&0x80) {
-                    *(dst) = fgc_blue;
+                    *(dst+0) = fgc_blue;
                     *(dst+1) = fgc_green;
                     *(dst+2) = fgc_red;
                     *(dst+3) = 0;
                 } else {
-                    *(dst) = bgc_blue;
+                    *(dst+0) = bgc_blue;
                     *(dst+1) = bgc_green;
                     *(dst+2) = bgc_red;
                     *(dst+3) = 0;
                 }
-                d<<=1;
+                d <<= 1;
                 dst += 4;
             }
         }
 
-	if (cache_id != 0) {
-	    ce = g_new(CachedImage, 1);
-	    ce->cache_id = cache_id;
-	    ce->bitmap = bitmap;
-	    g_hash_table_insert(spice_screen->image_cache, &ce->cache_id, ce);
-	}
+        if (cache_id != 0) {
+            ce = g_new(CachedImage, 1);
+            ce->cache_id = cache_id;
+            ce->bitmap = bitmap;
+            g_hash_table_insert(spice_screen->image_cache, &ce->cache_id, ce);
+        }
     }
 
     bbox.left = left; bbox.top = top;
@@ -311,10 +314,16 @@ spice_screen_draw_char_cmd(SpiceScreen *spice_screen, int x, int y, int c,
     return spice_screen_update_from_bitmap_cmd(0, bbox, bitmap, cache_id);
 }
 
-void 
-spice_screen_scroll(SpiceScreen *spice_screen, int x1, int y1, 
-                    int x2, int y2, int src_x, int src_y)
-{
+void
+spice_screen_scroll(
+    SpiceScreen *spice_screen,
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    int src_x,
+    int src_y
+) {
     SimpleSpiceUpdate *update;
     QXLDrawable *drawable;
     QXLRect bbox;
@@ -348,7 +357,7 @@ spice_screen_scroll(SpiceScreen *spice_screen, int x1, int y1,
     push_command(spice_screen, &update->ext);
 }
 
-void 
+void
 spice_screen_clear(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2)
 {
     SimpleSpiceUpdate *update;
@@ -381,10 +390,12 @@ spice_screen_clear(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2)
     push_command(spice_screen, &update->ext);
 }
 
-static void 
-create_primary_surface(SpiceScreen *spice_screen, uint32_t width, 
-                       uint32_t height)
-{
+static void
+create_primary_surface(
+    SpiceScreen *spice_screen,
+    uint32_t width,
+    uint32_t height
+) {
     QXLDevSurfaceCreate surface = { 0, };
 
     g_assert(height > 0);
@@ -425,7 +436,7 @@ QXLDevMemSlot slot = {
     .qxl_ram_size = ~0,
 };
 
-static void 
+static void
 attache_worker(QXLInstance *qin, QXLWorker *_qxl_worker)
 {
     SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
@@ -433,26 +444,26 @@ attache_worker(QXLInstance *qin, QXLWorker *_qxl_worker)
     if (spice_screen->qxl_worker) {
         g_assert_not_reached();
     }
- 
+
     spice_screen->qxl_worker = _qxl_worker;
     spice_qxl_add_memslot(&spice_screen->qxl_instance, &slot);
     create_primary_surface(spice_screen, spice_screen->width, spice_screen->height);
     spice_server_vm_start(spice_screen->server);
 }
 
-static void 
+static void
 set_compression_level(QXLInstance *qin, int level)
 {
     /* not used */
 }
 
-static void 
+static void
 set_mm_time(QXLInstance *qin, uint32_t mm_time)
 {
     /* not used */
 }
 
-static void 
+static void
 get_init_info(QXLInstance *qin, QXLDevInitInfo *info)
 {
     memset(info, 0, sizeof(*info));
@@ -464,14 +475,14 @@ get_init_info(QXLInstance *qin, QXLDevInitInfo *info)
 }
 
 /* called from spice_server thread (i.e. red_worker thread) */
-static int 
+static int
 get_command(QXLInstance *qin, struct QXLCommandExt *ext)
 {
     SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
     int res = FALSE;
 
     g_mutex_lock(&spice_screen->command_mutex);
-    
+
     if ((spice_screen->commands_end - spice_screen->commands_start) == 0) {
         res = FALSE;
         goto ret;
@@ -490,7 +501,7 @@ ret:
 }
 
 void
-discard_pending_commands(SpiceScreen *spice_screen) 
+discard_pending_commands(SpiceScreen *spice_screen)
 {
     int pos;
 
@@ -502,7 +513,7 @@ discard_pending_commands(SpiceScreen *spice_screen)
     g_mutex_unlock(&spice_screen->command_mutex);
 }
 
-static int 
+static int
 req_cmd_notification(QXLInstance *qin)
 {
     //SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
@@ -519,7 +530,7 @@ static struct {
     uint8_t data[CURSOR_WIDTH * CURSOR_HEIGHT * 4]; // 32bit per pixel
 } cursor;
 
-static void 
+static void
 cursor_init()
 {
     cursor.cursor.header.unique = 0;
@@ -540,19 +551,19 @@ cursor_init()
     cursor.cursor.chunk.prev_chunk = cursor.cursor.chunk.next_chunk = 0;
 }
 
-static int 
+static int
 get_cursor_command(QXLInstance *qin, struct QXLCommandExt *ext)
 {
     SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
- 
+
     QXLCursorCmd *cursor_cmd;
     QXLCommandExt *cmd;
 
-    if (spice_screen->cursor_set) 
+    if (spice_screen->cursor_set)
         return FALSE;
-        
+
     spice_screen->cursor_set = 1;
-    
+
     cmd = calloc(sizeof(QXLCommandExt), 1);
     cursor_cmd = calloc(sizeof(QXLCursorCmd), 1);
 
@@ -575,7 +586,7 @@ get_cursor_command(QXLInstance *qin, struct QXLCommandExt *ext)
     return TRUE;
 }
 
-static int 
+static int
 req_cursor_notification(QXLInstance *qin)
 {
     /* not used */
@@ -583,13 +594,13 @@ req_cursor_notification(QXLInstance *qin)
     return TRUE;
 }
 
-static void 
+static void
 notify_update(QXLInstance *qin, uint32_t update_id)
 {
     /* not used */
 }
 
-static int 
+static int
 flush_resources(QXLInstance *qin)
 {
     /* not used */
@@ -597,7 +608,7 @@ flush_resources(QXLInstance *qin)
     return TRUE;
 }
 
-static int 
+static int
 client_monitors_config(QXLInstance *qin, VDAgentMonitorsConfig *monitors_config)
 {
     /* not used */
@@ -605,10 +616,12 @@ client_monitors_config(QXLInstance *qin, VDAgentMonitorsConfig *monitors_config)
     return 0;
 }
 
-static void 
-set_client_capabilities(QXLInstance *qin, uint8_t client_present, 
-                        uint8_t caps[58])
-{
+static void
+set_client_capabilities(
+    QXLInstance *qin,
+    uint8_t client_present,
+    uint8_t caps[58]
+) {
     SpiceScreen *spice_screen = SPICE_CONTAINEROF(qin, SpiceScreen, qxl_instance);
 
     DPRINTF(1, "present %d caps %d", client_present, caps[0]);
@@ -623,7 +636,7 @@ set_client_capabilities(QXLInstance *qin, uint8_t client_present,
 
 static int client_count = 0;
 
-static void 
+static void
 client_connected(SpiceScreen *spice_screen)
 {
     client_count++;
@@ -631,9 +644,9 @@ client_connected(SpiceScreen *spice_screen)
     DPRINTF(1, "client_count = %d", client_count);
 }
 
-static void 
+static void
 client_disconnected(SpiceScreen *spice_screen)
-{    
+{
     if (client_count > 0) {
         client_count--;
         DPRINTF(1, "client_count = %d", client_count);
@@ -641,7 +654,7 @@ client_disconnected(SpiceScreen *spice_screen)
     }
 }
 
-static void 
+static void
 do_conn_timeout(void *opaque)
 {
     // SpiceScreen *spice_screen = opaque;
@@ -678,10 +691,14 @@ QXLInterface display_sif = {
 };
 
 
-void 
-spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, 
-                       TextAttributes attrib)
-{
+void
+spice_screen_draw_char(
+    SpiceScreen *spice_screen,
+    int x,
+    int y,
+    gunichar2 ch,
+    TextAttributes attrib
+) {
     int fg, bg;
 
     int invers;
@@ -689,7 +706,7 @@ spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch,
         invers = attrib.selected ? 0 : 1;
     } else {
         invers = attrib.selected ? 1 : 0;
-    }        
+    }
 
     if (invers) {
         bg = attrib.fgcol;
@@ -713,9 +730,12 @@ spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch,
 }
 
 SpiceScreen *
-spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, 
-                 SpiceTermOptions *opts)
-{
+spice_screen_new(
+    SpiceCoreInterface *core,
+    uint32_t width,
+    uint32_t height,
+   SpiceTermOptions *opts
+) {
     SpiceScreen *spice_screen = g_new0(SpiceScreen, 1);
     SpiceServer* server = spice_server_new();
     char *x509_key_file = "/etc/pve/local/pve-ssl.key";
@@ -750,13 +770,15 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height,
     // spice_server_set_port(spice_server, port);
     //spice_server_set_image_compression(server, SPICE_IMAGE_COMPRESS_OFF);
 
-    spice_server_set_tls(server, opts->port,
-                         x509_cacert_file,
-                         x509_cert_file,
-                         x509_key_file,
-                         x509_key_password,
-                         x509_dh_file,
-                         tls_ciphers);
+    spice_server_set_tls(
+        server, opts->port,
+        x509_cacert_file,
+        x509_cert_file,
+        x509_key_file,
+        x509_key_password,
+        x509_dh_file,
+        tls_ciphers
+    );
 
     if (opts->noauth) {
         spice_server_set_noauth(server);
@@ -784,10 +806,12 @@ spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height,
     return spice_screen;
 }
 
-void 
-spice_screen_resize(SpiceScreen *spice_screen, uint32_t width,
-                    uint32_t height)
-{
+void
+spice_screen_resize(
+    SpiceScreen *spice_screen,
+    uint32_t width,
+    uint32_t height
+) {
     if (spice_screen->width == width && spice_screen->height == height) {
         return;
     }
@@ -795,7 +819,7 @@ spice_screen_resize(SpiceScreen *spice_screen, uint32_t width,
     discard_pending_commands(spice_screen);
 
     spice_qxl_destroy_primary_surface(&spice_screen->qxl_instance, 0);
- 
+
     create_primary_surface(spice_screen, width, height);
 
     spice_screen_clear(spice_screen, 0, 0, width, height);
