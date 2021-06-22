@@ -9,6 +9,7 @@ BUILDDIR ?= ${PACKAGE}-${DEB_VERSION_UPSTREAM}
 export VERSION=$(DEB_VERSION_UPSTREAM)
 
 DEB=${PACKAGE}_${DEB_VERSION_UPSTREAM_REVISION}_${DEB_BUILD_ARCH}.deb
+DBG_DEB=${PACKAGE}-dbgsym_${DEB_VERSION_UPSTREAM_REVISION}_${DEB_BUILD_ARCH}.deb
 DSC=${PACKAGE}_${DEB_VERSION_UPSTREAM_REVISION}.dsc
 
 ${BUILDDIR}: src/ debian/
@@ -34,7 +35,7 @@ dinstall: ${DEB}
 
 .PHONY: upload
 upload: ${DEB}
-	tar cf - ${DEB} | ssh repoman@repo.proxmox.com -- upload --product pve --dist bullseye --arch ${ARCH}
+	tar cf - ${DEB} ${DBG_DEB} | ssh repoman@repo.proxmox.com -- upload --product pve --dist bullseye --arch ${ARCH}
 
 .PHONY: distclean clean
 distclean: clean

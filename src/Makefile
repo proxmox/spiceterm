@@ -34,7 +34,7 @@ install: spiceterm spiceterm.1
 	mkdir -p ${DESTDIR}/usr/share/man/man1
 	install -m 0644 spiceterm.1 ${DESTDIR}/usr/share/man/man1
 	mkdir -p ${DESTDIR}/usr/bin
-	install -s -m 0755 spiceterm ${DESTDIR}/usr/bin
+	install -m 0755 spiceterm ${DESTDIR}/usr/bin
 
 .PHONY: test
 test: spiceterm
