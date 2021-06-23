@@ -789,6 +789,8 @@ spice_screen_new(
         }
     }
 
+    spice_server_set_exit_on_disconnect(server, 1);
+
     int res = spice_server_init(server, core);
     if (res != 0) {
         g_error("spice_server_init failed, res = %d\n", res);
