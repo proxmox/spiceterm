@@ -1,3 +1,10 @@
+spiceterm (3.2-2) bullseye; urgency=medium
+
+  * fix exit on client disconnect with newer libspice-server dependency's
+    behavior change
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 23 Jun 2021 10:12:34 +0200
+
 spiceterm (3.2-1) bullseye; urgency=medium
 
   * re-build for Debian 11 Bullseye / Proxmox VE 7
