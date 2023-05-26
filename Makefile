@@ -44,4 +44,5 @@ upload: $(DEB)
 .PHONY: distclean clean
 distclean: clean
 clean:
-	rm -rf *~ $(PACKAGE)-*/ *.deb *.changes genfont *.buildinfo *.dsc *.tar.gz
+	$(MAKE) -C src $@
+	rm -rf *~ $(PACKAGE)-*/ $(PACKAGE)*.tar* *.deb *.dsc *.changes *.build *.buildinfo
