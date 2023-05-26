@@ -16,10 +16,15 @@ $(BUILDDIR): src/ debian/
 	echo "git clone git://git.proxmox.com/git/spiceterm.git\\ngit checkout $(GITVERSION)" > $(BUILDDIR)/debian/SOURCE
 
 .PHONY: dsc
-dsc: $(DSC)
+dsc: clean
+	$(MAKE) $(DSC)
+	lintian $(DSC)
+
 $(DSC): $(BUILDDIR)
 	cd $(BUILDDIR); dpkg-buildpackage -S -us -uc -d
-	lintian $(DSC)
+
+sbuild: $(DSC)
+	sbuild $<
 
 .PHONY: deb
 deb: $(DEB)
