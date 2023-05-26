@@ -1,3 +1,11 @@
+spiceterm (3.3.0) bookworm; urgency=medium
+
+  * switch to native versioning scheme
+
+  * re-build for Proxmox VE 12 / Debian 12 Bookworm
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 26 May 2023 15:07:46 +0200
+
 spiceterm (3.2-2) bullseye; urgency=medium
 
   * fix exit on client disconnect with newer libspice-server dependency's
