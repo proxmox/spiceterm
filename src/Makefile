@@ -10,10 +10,10 @@ LIBS += `pkg-config --libs $(PKGS)`
 #export G_MESSAGES_DEBUG=all
 #export SPICE_DEBUG=1
 
-all: ${PROGRAMS}
+all: $(PROGRAMS)
 
-spiceterm: ${SOURCES} ${HEADERS} spiceterm.c
-	gcc -Werror -Wall -Wl,-z,relro -Wtype-limits ${SOURCES} -g -O2 $(CFLAGS) -o $@ -lutil $(LIBS)
+spiceterm: $(SOURCES) $(HEADERS) spiceterm.c
+	gcc -Werror -Wall -Wl,-z,relro -Wtype-limits $(SOURCES) -g -O2 $(CFLAGS) -o $@ -lutil $(LIBS)
 
 genfont: genfont.c
 	gcc -g -O2 -o $@ genfont.c -Wall -D_GNU_SOURCE -lz
@@ -27,14 +27,14 @@ glyphs: genfont
 
 spiceterm.1: spiceterm.pod
 	rm -f $@
-	pod2man -n $< -s 1 -r ${VERSION} <$< >$@
+	pod2man -n $< -s 1 -r $(VERSION) <$< >$@
 
 .PHONY: install
 install: spiceterm spiceterm.1
-	mkdir -p ${DESTDIR}/usr/share/man/man1
-	install -m 0644 spiceterm.1 ${DESTDIR}/usr/share/man/man1
-	mkdir -p ${DESTDIR}/usr/bin
-	install -m 0755 spiceterm ${DESTDIR}/usr/bin
+	mkdir -p $(DESTDIR)/usr/share/man/man1
+	install -m 0644 spiceterm.1 $(DESTDIR)/usr/share/man/man1
+	mkdir -p $(DESTDIR)/usr/bin
+	install -m 0755 spiceterm $(DESTDIR)/usr/bin
 
 .PHONY: test
 test: spiceterm
