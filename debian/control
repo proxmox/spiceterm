@@ -6,7 +6,7 @@ Build-Depends: debhelper-compat (= 13),
                libglib2.0-dev,
                libspice-protocol-dev,
                libspice-server-dev,
-Standards-Version: 4.1.3
+Standards-Version: 4.6.2
 
 Package: spiceterm
 Architecture: any
