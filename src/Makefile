@@ -1,4 +1,5 @@
 PROGRAMS=spiceterm
+VERSION ?= $(or $(shell git rev-parse --short HEAD), unknown)
 
 HEADERS=translations.h event_loop.h glyphs.h spiceterm.h keysyms.h
 SOURCES=screen.c event_loop.c input.c spiceterm.c auth-pve.c
