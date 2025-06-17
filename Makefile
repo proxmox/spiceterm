@@ -28,7 +28,7 @@ sbuild: $(DSC)
 
 .PHONY: deb
 deb: $(DEB)
-$(DEB): $(BUILDDIR)
+$(DEB) $(DBG_DEB) &: $(BUILDDIR)
 	cd $(BUILDDIR); dpkg-buildpackage -b -us -uc
 	lintian $(DEB)
 
