@@ -22,24 +22,25 @@
 
 */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/time.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include <glib.h>
 
-#include <spice/macros.h>
 #include "event_loop.h"
+#include <spice/macros.h>
 
 static int debug = 0;
-    
-#define DPRINTF(x, format, ...) { \
-    if (x <= debug) { \
-        printf("%s: " format "\n" , __FUNCTION__, ## __VA_ARGS__); \
-    } \
-}
+
+#define DPRINTF(x, format, ...)                                                                    \
+    {                                                                                              \
+        if (x <= debug) {                                                                          \
+            printf("%s: " format "\n", __FUNCTION__, ##__VA_ARGS__);                               \
+        }                                                                                          \
+    }
 
 static GMainLoop *main_loop;
 
@@ -52,8 +53,7 @@ typedef struct SpiceTimer {
     void *opaque;
 } Timer;
 
-static SpiceTimer* timer_add(SpiceTimerFunc func, void *opaque)
-{
+static SpiceTimer *timer_add(SpiceTimerFunc func, void *opaque) {
     g_return_val_if_fail(func != NULL, NULL);
 
     SpiceTimer *timer = g_new0(SpiceTimer, 1);
@@ -64,8 +64,7 @@ static SpiceTimer* timer_add(SpiceTimerFunc func, void *opaque)
     return timer;
 }
 
-static gboolean timer_callback(gpointer data)
-{
+static gboolean timer_callback(gpointer data) {
     SpiceTimer *timer = (SpiceTimer *)data;
     g_assert(timer != NULL);
     g_assert(timer->func != NULL);
@@ -75,15 +74,14 @@ static gboolean timer_callback(gpointer data)
     return FALSE;
 }
 
-static void timer_start(SpiceTimer *timer, uint32_t ms)
-{
+static void timer_start(SpiceTimer *timer, uint32_t ms) {
     g_return_if_fail(timer != NULL);
     g_return_if_fail(ms != 0);
 
     if (timer->source != NULL) {
         g_source_destroy(timer->source);
     }
-    
+
     timer->source = g_timeout_source_new(ms);
     g_assert(timer->source != NULL);
 
@@ -92,8 +90,7 @@ static void timer_start(SpiceTimer *timer, uint32_t ms)
     g_source_attach(timer->source, NULL);
 }
 
-static void timer_cancel(SpiceTimer *timer)
-{
+static void timer_cancel(SpiceTimer *timer) {
     g_return_if_fail(timer != NULL);
 
     if (timer->source != NULL) {
@@ -104,8 +101,7 @@ static void timer_cancel(SpiceTimer *timer)
     timer->ms = 0;
 }
 
-static void timer_remove(SpiceTimer *timer)
-{
+static void timer_remove(SpiceTimer *timer) {
     g_return_if_fail(timer != NULL);
 
     timer_cancel(timer);
@@ -121,8 +117,7 @@ struct SpiceWatch {
     void *opaque;
 };
 
-static gboolean watch_callback(GIOChannel *source, GIOCondition condition, gpointer data)
-{
+static gboolean watch_callback(GIOChannel *source, GIOCondition condition, gpointer data) {
     SpiceWatch *watch = (SpiceWatch *)data;
 
     g_assert(watch != NULL);
@@ -139,8 +134,7 @@ static gboolean watch_callback(GIOChannel *source, GIOCondition condition, gpoin
     return TRUE;
 }
 
-static GIOCondition event_mask_to_condition(int event_mask)
-{
+static GIOCondition event_mask_to_condition(int event_mask) {
     GIOCondition condition = 0;
 
     if (event_mask & SPICE_WATCH_EVENT_READ) {
@@ -154,8 +148,7 @@ static GIOCondition event_mask_to_condition(int event_mask)
     return condition;
 }
 
-static SpiceWatch *watch_add(int fd, int event_mask, SpiceWatchFunc func, void *opaque)
-{
+static SpiceWatch *watch_add(int fd, int event_mask, SpiceWatchFunc func, void *opaque) {
     SpiceWatch *watch = g_new0(SpiceWatch, 1);
 
     DPRINTF(1, "adding %p, fd=%d", watch, fd);
@@ -175,22 +168,20 @@ static SpiceWatch *watch_add(int fd, int event_mask, SpiceWatchFunc func, void *
     return watch;
 }
 
-static void watch_update_mask(SpiceWatch *watch, int event_mask)
-{
+static void watch_update_mask(SpiceWatch *watch, int event_mask) {
     g_assert(watch != NULL);
 
     DPRINTF(1, "fd %d to %d", watch->fd, event_mask);
- 
+
     watch->event_mask = event_mask;
 
     g_source_remove(watch->evid);
 
     GIOCondition condition = event_mask_to_condition(event_mask);
-    watch->evid = g_io_add_watch(watch->channel, condition, watch_callback, watch);    
+    watch->evid = g_io_add_watch(watch->channel, condition, watch_callback, watch);
 }
 
-static void watch_remove(SpiceWatch *watch)
-{
+static void watch_remove(SpiceWatch *watch) {
     g_assert(watch != NULL);
 
     DPRINTF(1, "remove %p (fd %d)", watch, watch->fd);
@@ -201,19 +192,16 @@ static void watch_remove(SpiceWatch *watch)
     g_free(watch);
 }
 
-static void channel_event(int event, SpiceChannelEventInfo *info)
-{
-    DPRINTF(1, "channel event con, type, id, event: %d, %d, %d, %d",
-            info->connection_id, info->type, info->id, event);
+static void channel_event(int event, SpiceChannelEventInfo *info) {
+    DPRINTF(
+        1, "channel event con, type, id, event: %d, %d, %d, %d", info->connection_id, info->type,
+        info->id, event
+    );
 }
 
-void basic_event_loop_mainloop(void)
-{
-    g_main_loop_run(main_loop);
-}
+void basic_event_loop_mainloop(void) { g_main_loop_run(main_loop); }
 
-static void ignore_sigpipe(void)
-{
+static void ignore_sigpipe(void) {
     struct sigaction act;
 
     memset(&act, 0, sizeof(act));
@@ -222,8 +210,7 @@ static void ignore_sigpipe(void)
     sigaction(SIGPIPE, &act, NULL);
 }
 
-SpiceCoreInterface *basic_event_loop_init(void)
-{
+SpiceCoreInterface *basic_event_loop_init(void) {
     main_loop = g_main_loop_new(NULL, FALSE);
 
     memset(&core, 0, sizeof(core));

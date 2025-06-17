@@ -1,36 +1,27 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include "spiceterm.h"
 
 static char *auth_path = "/";
 static char *auth_perm = "Sys.Console";
 
-void 
-pve_auth_set_path(char *path) 
-{
-    auth_path = path;
-}
+void pve_auth_set_path(char *path) { auth_path = path; }
 
-void 
-pve_auth_set_permissions(char *perm) 
-{
-    auth_perm = perm;
-}
+void pve_auth_set_permissions(char *perm) { auth_perm = perm; }
 
-static char *
-urlencode(char *buf, const char *value)
-{
+static char *urlencode(char *buf, const char *value) {
     static const char *hexchar = "0123456789abcdef";
     char *p = buf;
     int i;
     int l = strlen(value);
     for (i = 0; i < l; i++) {
         char c = value[i];
+        // clang-format off
         if (('a' <= c && c <= 'z') ||
             ('A' <= c && c <= 'Z') ||
             ('0' <= c && c <= '9')) {
@@ -42,15 +33,14 @@ urlencode(char *buf, const char *value)
             *p++ = hexchar[c >> 4];
             *p++ = hexchar[c & 15];
         }
+        // clang-format on
     }
     *p = 0;
 
     return p;
 }
 
-int 
-pve_auth_verify(const char *clientip, const char *username, const char *passwd)
-{
+int pve_auth_verify(const char *clientip, const char *username, const char *passwd) {
     struct sockaddr_in server;
 
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -97,12 +87,16 @@ pve_auth_verify(const char *clientip, const char *username, const char *passwd)
     *p++ = '=';
     p = urlencode(p, auth_perm);
 
-    sprintf(buf, "POST /api2/json/access/ticket HTTP/1.1\n"
-            "Host: localhost:85\n"
-            "Connection: close\n"
-            "PVEClientIP: %s\n"
-            "Content-Type: application/x-www-form-urlencoded\n"
-            "Content-Length: %zd\n\n%s\n", clientip, strlen(form), form);
+    sprintf(
+        buf,
+        "POST /api2/json/access/ticket HTTP/1.1\n"
+        "Host: localhost:85\n"
+        "Connection: close\n"
+        "PVEClientIP: %s\n"
+        "Content-Type: application/x-www-form-urlencoded\n"
+        "Content-Length: %zd\n\n%s\n",
+        clientip, strlen(form), form
+    );
     ssize_t len = strlen(buf);
     ssize_t sb = send(sfd, buf, len, 0);
     if (sb < 0) {
@@ -122,7 +116,7 @@ pve_auth_verify(const char *clientip, const char *username, const char *passwd)
 
     buf[len] = 0;
 
-    //printf("DATA:%s\n", buf);
+    // printf("DATA:%s\n", buf);
 
     shutdown(sfd, SHUT_RDWR);
 
@@ -131,7 +125,7 @@ pve_auth_verify(const char *clientip, const char *username, const char *passwd)
     }
 
     char *firstline = strtok(buf, "\n");
-    
+
     fprintf(stderr, "auth failed: %s\n", firstline);
 
     return -1;

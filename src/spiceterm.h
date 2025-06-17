@@ -5,14 +5,14 @@
 #define MAX_ESC_PARAMS 16
 
 typedef struct TextAttributes {
-    unsigned int fgcol:4;
-    unsigned int bgcol:4;
-    unsigned int bold:1;
-    unsigned int uline:1;
-    unsigned int blink:1;
-    unsigned int invers:1;
-    unsigned int unvisible:1;
-    unsigned int selected:1;
+    unsigned int fgcol : 4;
+    unsigned int bgcol : 4;
+    unsigned int bold : 1;
+    unsigned int uline : 1;
+    unsigned int blink : 1;
+    unsigned int invers : 1;
+    unsigned int unvisible : 1;
+    unsigned int selected : 1;
 } TextAttributes;
 
 typedef struct TextCell {
@@ -62,11 +62,11 @@ struct SpiceScreen {
 
     int commands_end;
     int commands_start;
-    struct QXLCommandExt* commands[COMMANDS_SIZE];
+    struct QXLCommandExt *commands[COMMANDS_SIZE];
 
-    //cache for glyphs bitmaps
+    // cache for glyphs bitmaps
     GHashTable *image_cache;
-    
+
     gboolean cursor_set;
 
     // callbacks
@@ -74,11 +74,16 @@ struct SpiceScreen {
     void (*on_client_disconnected)(SpiceScreen *spice_screen);
 };
 
-SpiceScreen* spice_screen_new(SpiceCoreInterface* core, uint32_t width, uint32_t height, SpiceTermOptions *opts);
+SpiceScreen *
+spice_screen_new(SpiceCoreInterface *core, uint32_t width, uint32_t height, SpiceTermOptions *opts);
 
 void spice_screen_resize(SpiceScreen *spice_screen, uint32_t width, uint32_t height);
-void spice_screen_draw_char(SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib);
-void spice_screen_scroll(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2, int src_x, int src_y);
+void spice_screen_draw_char(
+    SpiceScreen *spice_screen, int x, int y, gunichar2 ch, TextAttributes attrib
+);
+void spice_screen_scroll(
+    SpiceScreen *spice_screen, int x1, int y1, int x2, int y2, int src_x, int src_y
+);
 void spice_screen_clear(SpiceScreen *spice_screen, int x1, int y1, int x2, int y2);
 uint32_t spice_screen_get_width(void);
 uint32_t spice_screen_get_height(void);
@@ -93,11 +98,11 @@ typedef struct spiceTerm {
     int scroll_height;
     int y_base;
     int y_displ;
-    int altbuf:1;
+    int altbuf : 1;
 
-    unsigned int utf8:1; // utf8 mode
-    gunichar utf_char;   // used by utf8 parser
-    int utf_count;       // used by utf8 parser
+    unsigned int utf8 : 1; // utf8 mode
+    gunichar utf_char; // used by utf8 parser
+    int utf_count; // used by utf8 parser
 
     TextAttributes default_attrib;
 
@@ -125,14 +130,14 @@ typedef struct spiceTerm {
     unsigned int region_top;
     unsigned int region_bottom;
 
-    unsigned int charset:1; // G0 or G1
-    unsigned int charset_saved:1; // G0 or G1
-    unsigned int g0enc:2;
-    unsigned int g0enc_saved:2;
-    unsigned int g1enc:2;
-    unsigned int g1enc_saved:2;
-    unsigned int cur_enc:2;
-    unsigned int cur_enc_saved:2;
+    unsigned int charset : 1; // G0 or G1
+    unsigned int charset_saved : 1; // G0 or G1
+    unsigned int g0enc : 2;
+    unsigned int g0enc_saved : 2;
+    unsigned int g1enc : 2;
+    unsigned int g1enc_saved : 2;
+    unsigned int cur_enc : 2;
+    unsigned int cur_enc_saved : 2;
 
     // input buffer
     char ibuf[IBUFSIZE];
@@ -141,9 +146,9 @@ typedef struct spiceTerm {
     gunichar2 *selection;
     int selection_len;
 
-    unsigned int mark_active:1;
+    unsigned int mark_active : 1;
 
-    unsigned int report_mouse:1;
+    unsigned int report_mouse : 1;
 
 } spiceTerm;
 
@@ -153,8 +158,7 @@ void spiceterm_refresh(spiceTerm *vt);
 void spiceterm_resize(spiceTerm *vt, uint32_t width, uint32_t height);
 void spiceterm_virtual_scroll(spiceTerm *vt, int lines);
 void spiceterm_clear_selection(spiceTerm *vt);
-void spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, 
-                            uint32_t buttons);
+void spiceterm_motion_event(spiceTerm *vt, uint32_t x, uint32_t y, uint32_t buttons);
 
 void spiceterm_respond_esc(spiceTerm *vt, const char *esc);
 void spiceterm_respond_data(spiceTerm *vt, int len, uint8_t *data);
@@ -169,4 +173,3 @@ void vdagent_grab_clipboard(spiceTerm *vt);
 int pve_auth_verify(const char *clientip, const char *username, const char *passwd);
 void pve_auth_set_path(char *path);
 void pve_auth_set_permissions(char *perm);
-
