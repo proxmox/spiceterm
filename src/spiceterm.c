@@ -739,8 +739,6 @@ static void spiceterm_putchar(spiceTerm *vt, gunichar2 ch) {
         case '1':
         case '2':
         case '4':
-            vt->osc_cmd = ch;
-            vt->osc_textbuf[0] = 0;
             vt->tty_state = ESosc1;
             break;
         default:
@@ -758,15 +756,7 @@ static void spiceterm_putchar(spiceTerm *vt, gunichar2 ch) {
         }
         break;
     case ESosc2:
-        if (ch != 0x9c && ch != 7) {
-            int i = 0;
-            while (vt->osc_textbuf[i]) {
-                i++;
-            }
-            vt->osc_textbuf[i++] = ch;
-            vt->osc_textbuf[i] = 0;
-        } else {
-            DPRINTF(1, "OSC:%c:%s", vt->osc_cmd, vt->osc_textbuf);
+        if (ch == 0x9c || ch == 7) {
             vt->tty_state = ESnormal;
         }
         break;
