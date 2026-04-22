@@ -1549,6 +1549,22 @@ static gboolean master_error_callback(GIOChannel *channel, GIOCondition conditio
     return FALSE;
 }
 
+static gboolean master_hup_callback(GIOChannel *channel, GIOCondition condition, gpointer data) {
+    spiceTerm *vt = (spiceTerm *)data;
+
+    DPRINTF(1, "condition %d", condition);
+
+    // /usr/bin/login sends a HUP at the beginning, meaning we must ignore them
+    // until we had at least one client, otherwise we exit immediately.
+    if (vt->screen->client_count < 1) {
+        return TRUE;
+    }
+
+    exit(0);
+
+    return FALSE;
+}
+
 static void master_watch(int master, int event, void *opaque) {
     spiceTerm *vt = (spiceTerm *)opaque;
     int c;
@@ -1717,7 +1733,8 @@ int main(int argc, char **argv) {
     GIOChannel *channel = g_io_channel_unix_new(master);
     g_io_channel_set_flags(channel, G_IO_FLAG_NONBLOCK, NULL);
     g_io_channel_set_encoding(channel, NULL, NULL);
-    g_io_add_watch(channel, G_IO_ERR | G_IO_HUP, master_error_callback, vt);
+    g_io_add_watch(channel, G_IO_ERR, master_error_callback, vt);
+    g_io_add_watch(channel, G_IO_HUP, master_hup_callback, vt);
 
     vt->screen->mwatch = vt->screen->core->watch_add(
         master, SPICE_WATCH_EVENT_READ /* |SPICE_WATCH_EVENT_WRITE */, master_watch, vt

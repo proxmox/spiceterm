@@ -50,6 +50,8 @@ struct SpiceScreen {
     int primary_height;
     int primary_width;
 
+    int client_count;
+
     SpiceTimer *conn_timeout_timer;
     SpiceWatch *mwatch; /* watch master pty */
 

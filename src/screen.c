@@ -568,26 +568,24 @@ static void set_client_capabilities(QXLInstance *qin, uint8_t client_present, ui
     }
 }
 
-static int client_count = 0;
-
 static void client_connected(SpiceScreen *spice_screen) {
-    client_count++;
+    spice_screen->client_count++;
 
-    DPRINTF(1, "client_count = %d", client_count);
+    DPRINTF(1, "client_count = %d", spice_screen->client_count);
 }
 
 static void client_disconnected(SpiceScreen *spice_screen) {
-    if (client_count > 0) {
-        client_count--;
-        DPRINTF(1, "client_count = %d", client_count);
+    if (spice_screen->client_count > 0) {
+        spice_screen->client_count--;
+        DPRINTF(1, "client_count = %d", spice_screen->client_count);
         exit(0); // fixme: cleanup?
     }
 }
 
 static void do_conn_timeout(void *opaque) {
-    // SpiceScreen *spice_screen = opaque;
+    SpiceScreen *spice_screen = opaque;
 
-    if (client_count <= 0) {
+    if (spice_screen->client_count <= 0) {
         printf("connection timeout - stopping server\n");
         exit(0); // fixme: cleanup?
     }
@@ -663,6 +661,8 @@ SpiceScreen *spice_screen_new(
 
     spice_screen->width = width;
     spice_screen->height = height;
+
+    spice_screen->client_count = 0;
 
     g_cond_init(&spice_screen->command_cond);
     g_mutex_init(&spice_screen->command_mutex);
