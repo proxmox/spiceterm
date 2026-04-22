@@ -1,3 +1,11 @@
+spiceterm (3.4.2) trixie; urgency=medium
+
+  * ignore hangup on the pty to avoid closing it before 'login' is done
+    setting up the terminal. This makes us cope with the behavior of the login
+    package version included in Debian Trixie.
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 22 Apr 2026 12:34:05 +0200
+
 spiceterm (3.4.1) trixie; urgency=medium
 
   * osc: remove buffer that was only used for debug information.
